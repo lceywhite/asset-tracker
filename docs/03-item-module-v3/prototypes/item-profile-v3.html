@@ -1,0 +1,235 @@
+<div id="item-design-confirmed-v3">
+  <style>
+    #item-design-confirmed-v3 {
+      --v3-bg: color-mix(in srgb, var(--background) 94%, var(--primary));
+      --v3-soft: color-mix(in srgb, var(--card) 88%, var(--primary));
+      color: var(--foreground);
+      width: 100%;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #item-design-confirmed-v3 * { box-sizing: border-box; }
+    #item-design-confirmed-v3 button,
+    #item-design-confirmed-v3 input,
+    #item-design-confirmed-v3 textarea { font: inherit; }
+    #item-design-confirmed-v3 .modes { justify-content: center; margin-bottom: 16px; }
+    #item-design-confirmed-v3 .phone { width: min(100%, 420px); margin: 0 auto; overflow: hidden; }
+    #item-design-confirmed-v3 .screen[hidden],
+    #item-design-confirmed-v3 .flow[hidden],
+    #item-design-confirmed-v3 .fold-content[hidden] { display: none; }
+    #item-design-confirmed-v3 .top { display: grid; grid-template-columns: 76px 1fr 76px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    #item-design-confirmed-v3 .top strong { text-align: center; font-weight: 500; }
+    #item-design-confirmed-v3 .top button { border: 0; background: transparent; color: var(--primary); padding: 7px 0; }
+    #item-design-confirmed-v3 .top button:first-child { color: var(--muted-foreground); text-align: left; }
+    #item-design-confirmed-v3 .body { padding: 14px; background: var(--v3-bg); }
+    #item-design-confirmed-v3 .section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    #item-design-confirmed-v3 .section:last-child { border-bottom: 0; }
+    #item-design-confirmed-v3 .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    #item-design-confirmed-v3 .head h3 { margin: 0; font-weight: 500; }
+    #item-design-confirmed-v3 .muted { color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .hero { display: grid; grid-template-columns: minmax(0, 1fr) 116px; gap: 14px; align-items: start; }
+    #item-design-confirmed-v3 .cover { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(145deg, var(--v3-soft), var(--muted)); position: relative; overflow: hidden; }
+    #item-design-confirmed-v3 .cover > span { font-size: 54px; filter: drop-shadow(0 9px 12px color-mix(in srgb, var(--foreground) 18%, transparent)); }
+    #item-design-confirmed-v3 .cover button { position: absolute; right: 7px; bottom: 7px; border: 0; border-radius: 999px; padding: 6px 8px; background: var(--card); color: var(--card-foreground); }
+    #item-design-confirmed-v3 .name { margin: 0 0 4px; font-weight: 500; }
+    #item-design-confirmed-v3 .id { color: var(--muted-foreground); letter-spacing: .06em; margin-bottom: 9px; }
+    #item-design-confirmed-v3 .field { display: grid; gap: 5px; }
+    #item-design-confirmed-v3 .field label { color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .field input,
+    #item-design-confirmed-v3 .field textarea { width: 100%; border: 1px solid var(--input); background: var(--background); color: var(--foreground); border-radius: 10px; padding: 10px; }
+    #item-design-confirmed-v3 .field input:disabled { opacity: .72; background: var(--muted); }
+    #item-design-confirmed-v3 .field textarea { min-height: 78px; resize: vertical; }
+    #item-design-confirmed-v3 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #item-design-confirmed-v3 .wide { grid-column: 1 / -1; }
+    #item-design-confirmed-v3 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    #item-design-confirmed-v3 .chip { border: 1px solid var(--border); border-radius: 999px; padding: 7px 10px; background: var(--card); color: var(--card-foreground); }
+    #item-design-confirmed-v3 .chip[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+    #item-design-confirmed-v3 .tag { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 6px 9px; background: var(--v3-soft); }
+    #item-design-confirmed-v3 .tag button { border: 0; padding: 0; background: transparent; color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .switch { width: 100%; border: 1px dashed var(--primary); background: var(--v3-soft); color: var(--primary); border-radius: 12px; padding: 10px; margin-bottom: 12px; }
+    #item-design-confirmed-v3 .location { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    #item-design-confirmed-v3 .location div { padding: 11px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+    #item-design-confirmed-v3 .location span { display: block; color: var(--muted-foreground); margin-bottom: 4px; }
+    #item-design-confirmed-v3 .finance { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 13px; }
+    #item-design-confirmed-v3 .finance div { padding-right: 7px; border-right: 1px solid var(--border); }
+    #item-design-confirmed-v3 .finance div:last-child { border-right: 0; }
+    #item-design-confirmed-v3 .finance span,
+    #item-design-confirmed-v3 .finance small { display: block; color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .finance strong { display: block; font-weight: 500; margin: 3px 0; }
+    #item-design-confirmed-v3 .primary { width: 100%; border: 0; border-radius: 12px; padding: 12px; background: var(--primary); color: var(--primary-foreground); font-weight: 500; }
+    #item-design-confirmed-v3 .stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 13px; }
+    #item-design-confirmed-v3 .stepper span { padding: 8px 2px; text-align: center; color: var(--muted-foreground); border-bottom: 2px solid var(--border); }
+    #item-design-confirmed-v3 .stepper span:first-child { color: var(--primary); border-color: var(--primary); }
+    #item-design-confirmed-v3 .fold { border-bottom: 1px solid var(--border); }
+    #item-design-confirmed-v3 .fold-button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 12px; text-align: left; border: 0; background: transparent; color: var(--foreground); padding: 13px 0; }
+    #item-design-confirmed-v3 .fold-button b { display: block; font-weight: 500; margin-bottom: 4px; }
+    #item-design-confirmed-v3 .fold-button span { color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .fold-button i { align-self: center; color: var(--muted-foreground); font-style: normal; }
+    #item-design-confirmed-v3 .fold-content { padding-bottom: 13px; }
+    #item-design-confirmed-v3 .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    #item-design-confirmed-v3 .kv div { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    #item-design-confirmed-v3 .kv span { color: var(--muted-foreground); }
+    #item-design-confirmed-v3 .kv strong { font-weight: 500; text-align: right; }
+    #item-design-confirmed-v3 .timeline { margin-left: 6px; padding-left: 15px; border-left: 2px solid var(--border); }
+    #item-design-confirmed-v3 .event { position: relative; padding-bottom: 13px; }
+    #item-design-confirmed-v3 .event::before { content: ""; position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--card); }
+    #item-design-confirmed-v3 .event time { display: block; color: var(--muted-foreground); margin-bottom: 3px; }
+    #item-design-confirmed-v3 .note { border-left: 3px solid var(--primary); padding-left: 12px; }
+    #item-design-confirmed-v3 .progress { height: 7px; border-radius: 999px; background: var(--muted); overflow: hidden; margin-top: 8px; }
+    #item-design-confirmed-v3 .progress span { display: block; width: 94%; height: 100%; background: var(--primary); }
+    #item-design-confirmed-v3 .edit-group { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    #item-design-confirmed-v3 .edit-group:last-child { border-bottom: 0; }
+    #item-design-confirmed-v3 .group-title { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 9px; }
+    #item-design-confirmed-v3 .group-title input { min-width: 0; border: 0; border-bottom: 1px solid var(--input); background: transparent; color: var(--foreground); padding: 7px 2px; font-weight: 500; }
+    #item-design-confirmed-v3 .group-title button,
+    #item-design-confirmed-v3 .add-row { border: 0; background: transparent; color: var(--primary); }
+    #item-design-confirmed-v3 .group-title .delete-group { color: var(--destructive); }
+    #item-design-confirmed-v3 .property-row { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) auto; gap: 7px; align-items: center; margin-bottom: 7px; }
+    #item-design-confirmed-v3 .property-row input { min-width: 0; border: 1px solid var(--input); background: var(--background); color: var(--foreground); border-radius: 9px; padding: 9px; }
+    #item-design-confirmed-v3 .property-row button { border: 0; background: transparent; color: var(--destructive); }
+    #item-design-confirmed-v3 .add-group { width: 100%; border: 1px dashed var(--primary); border-radius: 12px; background: transparent; color: var(--primary); padding: 11px; margin: 12px 0; }
+    @media (max-width: 480px) {
+      #item-design-confirmed-v3 .grid,
+      #item-design-confirmed-v3 .kv { grid-template-columns: 1fr; }
+      #item-design-confirmed-v3 .hero { grid-template-columns: minmax(0, 1fr) 104px; }
+      #item-design-confirmed-v3 .finance { grid-template-columns: 1fr; }
+      #item-design-confirmed-v3 .finance div { border-right: 0; border-bottom: 1px solid var(--border); padding: 7px 0; }
+      #item-design-confirmed-v3 .property-row { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="viz-controls modes" role="tablist" aria-label="物品界面定稿预览">
+    <button class="btn btn-primary" type="button" data-mode="add" aria-selected="true">添加物品</button>
+    <button class="btn" type="button" data-mode="detail" aria-selected="false">物品档案</button>
+    <button class="btn" type="button" data-mode="edit" aria-selected="false">完整编辑</button>
+  </div>
+
+  <section class="card phone">
+    <div class="screen" data-screen="add">
+      <header class="top"><button type="button">取消</button><strong data-add-title>快速添加</strong><button type="button">保存</button></header>
+      <div class="body">
+        <div class="flow" data-flow="quick">
+          <button class="switch" type="button" data-switch="guided">切换为逐步添加 →</button>
+          <section class="section hero"><div><div class="field"><label for="v3-name">物品名称 *</label><input id="v3-name" value="通勤背包" /></div><div class="id" style="margin-top:8px">保存后自动生成唯一 ID</div></div><div class="cover"><span>🎒</span><button type="button">拍照</button></div></section>
+          <section class="section"><div class="head"><h3>分类</h3><span class="muted">按物品属性选择</span></div><div class="chips" data-chip-group><button class="chip" type="button" aria-pressed="true">🎒 箱包</button><button class="chip" type="button" aria-pressed="false">💻 电子设备</button><button class="chip" type="button" aria-pressed="false">👕 衣服</button><button class="chip" type="button" aria-pressed="false">🛠️ 工具</button><button class="chip" type="button" aria-pressed="false">＋ 更多</button></div></section>
+          <section class="section"><div class="head"><h3>标签</h3><span class="muted">自定义气泡</span></div><div class="chips"><span class="tag">重要 <button type="button" aria-label="删除重要标签">×</button></span><span class="tag">通勤 <button type="button" aria-label="删除通勤标签">×</button></span><span class="tag">旅行必带 <button type="button" aria-label="删除旅行必带标签">×</button></span><button class="chip" type="button">＋ 添加标签</button></div></section>
+          <section class="section"><div class="head"><h3>当前位置</h3><span class="muted">房间和容器可同时记录</span></div><div class="location"><div><span>常驻位置</span><strong>🚪 玄关 · 上层挂钩</strong></div><div><span>当前容器</span><strong>🎒 随身携带</strong></div></div></section>
+          <section class="section"><div class="head"><h3>常用属性</h3><span class="muted">熟练用户一屏完成</span></div><div class="grid"><div class="field"><label for="v3-brand">品牌</label><input id="v3-brand" value="Bellroy" /></div><div class="field"><label for="v3-model">型号</label><input id="v3-model" value="Transit Workpack" /></div><div class="field"><label for="v3-price">购入价</label><input id="v3-price" value="¥899" /></div><div class="field"><label for="v3-date">购入时间</label><input id="v3-date" value="2025-03-18" /></div><div class="field wide"><label for="v3-note">备注</label><textarea id="v3-note">内含钥匙扣、雨罩和公司门禁卡。</textarea></div></div></section>
+          <button class="primary" type="button">保存物品</button>
+        </div>
+        <div class="flow" data-flow="guided" hidden>
+          <button class="switch" type="button" data-switch="quick">返回快速添加 →</button>
+          <div class="stepper"><span>1 基本</span><span>2 位置</span><span>3 属性</span><span>4 确认</span></div>
+          <section class="section hero"><div><div class="field"><label for="v3-g-name">物品名称 *</label><input id="v3-g-name" value="通勤背包" /></div><div class="id" style="margin-top:8px">当前步骤：建立物品身份</div></div><div class="cover"><span>🎒</span><button type="button">拍照</button></div></section>
+          <section class="section"><div class="head"><h3>选择物品分类</h3><span class="muted">以后可以修改</span></div><div class="chips"><button class="chip" type="button" aria-pressed="true">🎒 箱包</button><button class="chip" type="button">💻 电子设备</button><button class="chip" type="button">👕 衣服</button><button class="chip" type="button">🛠️ 工具</button></div></section>
+          <button class="primary" type="button">下一步：记录位置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" data-screen="detail" hidden>
+      <header class="top"><button type="button">返回</button><strong>物品档案</strong><button type="button" data-edit>编辑</button></header>
+      <div class="body">
+        <section class="section"><div class="hero"><div><h2 class="name">通勤背包</h2><div class="id">ID · AT-0427</div><div class="badges"><span class="tag">🎒 箱包</span><span class="tag">重要</span><span class="tag">旅行必带</span></div></div><div class="cover"><span>🎒</span><button type="button">3 张</button></div></div><div class="finance"><div><span>当前估值</span><strong>¥699</strong><small>按 3 年直线折旧</small></div><div><span>购入价</span><strong>¥899</strong><small>品牌官网</small></div><div><span>购入时间</span><strong>2025-03-18</strong><small>使用 1年4个月</small></div></div></section>
+        <section class="section"><div class="head"><h3>当前位置</h3><button class="btn btn-ghost" type="button">移动</button></div><div class="location"><div><span>常驻位置</span><strong>🚪 玄关 · 上层挂钩</strong></div><div><span>当前容器</span><strong>🎒 随身携带</strong></div></div></section>
+        <div class="fold"><button class="fold-button" type="button" data-fold="history" aria-expanded="false"><span><b>位置历史</b><span>3 条记录 · 最近今天 08:32</span></span><i>展开⌄</i></button><div class="fold-content" data-fold-content="history" hidden><div class="timeline"><div class="event"><time>今天 08:32</time><strong>玄关 → 随身携带</strong><div class="muted">出发上班时装入</div></div><div class="event"><time>7月12日 19:16</time><strong>旅行箱 → 玄关上层挂钩</strong><div class="muted">旅行返程归位</div></div><div class="event"><time>7月8日 21:04</time><strong>玄关 → 28寸旅行箱</strong><div class="muted">加入“上海出差”行程</div></div></div></div></div>
+        <section class="section"><div class="head"><h3>备注</h3><span class="muted">7月12日更新</span></div><div class="note">内含钥匙扣、雨罩和公司门禁卡。出差时检查护照是否放入前袋；雨罩位于底部暗袋。</div></section>
+        <div class="fold"><button class="fold-button" type="button" data-fold="product" aria-expanded="false"><span><b>产品属性</b><span>Bellroy · 20L · 深海蓝 · 9成新</span></span><i>展开⌄</i></button><div class="fold-content" data-fold-content="product" hidden><div class="kv"><div><span>品牌</span><strong>Bellroy</strong></div><div><span>型号</span><strong>Transit Workpack</strong></div><div><span>颜色</span><strong>深海蓝</strong></div><div><span>材质</span><strong>再生尼龙</strong></div><div><span>容量</span><strong>20 L</strong></div><div><span>成色</span><strong>9成新</strong></div></div></div></div>
+        <div class="fold"><button class="fold-button" type="button" data-fold="money" aria-expanded="false"><span><b>财务信息</b><span>估值 ¥699 · 保修至 2027-03-18 · 1份票据</span></span><i>展开⌄</i></button><div class="fold-content" data-fold-content="money" hidden><div class="kv"><div><span>折旧方式</span><strong>3年直线折旧</strong></div><div><span>购买渠道</span><strong>品牌官网</strong></div><div><span>保修期</span><strong>至 2027-03-18</strong></div><div><span>购买凭证</span><strong>电子发票.pdf</strong></div></div></div></div>
+        <div class="fold"><button class="fold-button" type="button" data-fold="care" aria-expanded="false"><span><b>维护属性</b><span>最近清洁 6月28日 · 下次维护 9月28日</span></span><i>展开⌄</i></button><div class="fold-content" data-fold-content="care" hidden><div class="kv"><div><span>使用频率</span><strong>工作日每天</strong></div><div><span>最近盘点</span><strong>今天 08:32</strong></div><div><span>最近清洁</span><strong>2026-06-28</strong></div><div><span>下次维护</span><strong>2026-09-28</strong></div></div></div></div>
+        <div class="fold"><button class="fold-button" type="button" data-fold="travel" aria-expanded="false"><span><b>旅行属性</b><span>优先级 S · 可登机 · 最大负重 12kg</span></span><i>展开⌄</i></button><div class="fold-content" data-fold-content="travel" hidden><div class="kv"><div><span>旅行优先级</span><strong>S</strong></div><div><span>登机规格</span><strong>可随身登机</strong></div><div><span>最大负重</span><strong>12 kg</strong></div></div></div></div>
+      </div>
+    </div>
+
+    <div class="screen" data-screen="edit" hidden>
+      <header class="top"><button type="button">取消</button><strong>编辑完整档案</strong><button type="button">保存</button></header>
+      <div class="body">
+        <section class="section"><div class="head"><div><h3>档案完整度 94%</h3><span class="muted">仅在编辑界面显示</span></div><strong>38/40</strong></div><div class="progress"><span></span></div></section>
+        <section class="edit-group"><div class="head"><h3>物品身份</h3><span class="muted">ID 由系统生成</span></div><div class="hero"><div class="grid" style="grid-template-columns:1fr"><div class="field"><label for="v3-edit-name">物品名称</label><input id="v3-edit-name" value="通勤背包" /></div><div class="field"><label for="v3-edit-id">物品 ID · 唯一且不可修改</label><input id="v3-edit-id" value="AT-0427" disabled /></div></div><div class="cover"><span>🎒</span><button type="button">管理图片</button></div></div><div class="section"><div class="head"><h3>分类</h3><span class="muted">选择物品属性类别</span></div><div class="chips"><button class="chip" type="button" aria-pressed="true">🎒 箱包</button><button class="chip" type="button">💻 电子设备</button><button class="chip" type="button">👕 衣服</button><button class="chip" type="button">🛠️ 工具</button></div></div><div class="head"><h3>标签</h3><span class="muted">自定义气泡</span></div><div class="chips"><span class="tag">重要 <button type="button">×</button></span><span class="tag">旅行必带 <button type="button">×</button></span><button class="chip" type="button">＋ 新标签</button></div></section>
+
+        <section class="edit-group" data-property-group><div class="group-title"><input value="产品属性" aria-label="产品属性组标题" disabled /><button class="add-row" type="button" data-add-row>＋ 信息项</button></div><div data-rows><div class="property-row"><input value="品牌" aria-label="字段名称" /><input value="Bellroy" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="型号" aria-label="字段名称" /><input value="Transit Workpack" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="材质" aria-label="字段名称" /><input value="再生尼龙" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="精确重量" aria-label="字段名称" /><input placeholder="未填写" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div></div></section>
+        <section class="edit-group" data-property-group><div class="group-title"><input value="财务信息" aria-label="财务信息组标题" disabled /><button class="add-row" type="button" data-add-row>＋ 信息项</button></div><div data-rows><div class="property-row"><input value="购入价" aria-label="字段名称" /><input value="¥899" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="购入时间" aria-label="字段名称" /><input value="2025-03-18" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="折旧方式" aria-label="字段名称" /><input value="3年直线折旧" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="保险单号" aria-label="字段名称" /><input placeholder="未填写" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div></div></section>
+        <section class="edit-group" data-property-group><div class="group-title"><input value="维护属性" aria-label="维护属性组标题" disabled /><button class="add-row" type="button" data-add-row>＋ 信息项</button></div><div data-rows><div class="property-row"><input value="最近清洁" aria-label="字段名称" /><input value="2026-06-28" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="下次维护" aria-label="字段名称" /><input value="2026-09-28" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div></div></section>
+        <section class="edit-group"><div class="head"><h3>备注</h3><span class="muted">自由文本</span></div><div class="field"><textarea aria-label="备注">内含钥匙扣、雨罩和公司门禁卡。出差时检查护照是否放入前袋。</textarea></div></section>
+
+        <div data-custom-groups>
+          <section class="edit-group" data-property-group data-custom-group><div class="group-title"><input value="旅行属性" aria-label="自定义属性组标题" /><button class="delete-group" type="button" data-delete-group>删除属性组</button></div><div data-rows><div class="property-row"><input value="旅行优先级" aria-label="字段名称" /><input value="S" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div><div class="property-row"><input value="登机规格" aria-label="字段名称" /><input value="可随身登机" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div></div><button class="add-row" type="button" data-add-row>＋ 添加信息项</button></section>
+        </div>
+        <button class="add-group" type="button" data-add-group>＋ 新增自定义属性组</button>
+        <button class="primary" type="button">保存完整档案</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById("item-design-confirmed-v3");
+      if (!root) return;
+      const showMode = (name) => {
+        root.querySelectorAll("[data-mode]").forEach((button) => {
+          const selected = button.dataset.mode === name;
+          button.setAttribute("aria-selected", String(selected));
+          button.classList.toggle("btn-primary", selected);
+        });
+        root.querySelectorAll("[data-screen]").forEach((screen) => { screen.hidden = screen.dataset.screen !== name; });
+      };
+      root.querySelectorAll("[data-mode]").forEach((button) => button.addEventListener("click", () => showMode(button.dataset.mode)));
+      root.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () => showMode("edit")));
+
+      const title = root.querySelector("[data-add-title]");
+      root.querySelectorAll("[data-switch]").forEach((button) => button.addEventListener("click", () => {
+        const target = button.dataset.switch;
+        root.querySelectorAll("[data-flow]").forEach((flow) => { flow.hidden = flow.dataset.flow !== target; });
+        if (title) title.textContent = target === "quick" ? "快速添加" : "逐步添加";
+      }));
+
+      root.querySelectorAll("[data-chip-group]").forEach((group) => group.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+        group.querySelectorAll("button").forEach((peer) => peer.setAttribute("aria-pressed", "false"));
+        button.setAttribute("aria-pressed", "true");
+      })));
+
+      root.querySelectorAll("[data-fold]").forEach((button) => button.addEventListener("click", () => {
+        const name = button.dataset.fold;
+        const content = root.querySelector(`[data-fold-content="${name}"]`);
+        const expanded = button.getAttribute("aria-expanded") === "true";
+        button.setAttribute("aria-expanded", String(!expanded));
+        if (content) content.hidden = expanded;
+        const icon = button.querySelector("i");
+        if (icon) icon.textContent = expanded ? "展开⌄" : "收起⌃";
+      }));
+
+      const bindRow = (row) => {
+        const remove = row.querySelector("[data-remove-row]");
+        if (remove) remove.addEventListener("click", () => row.remove());
+      };
+      root.querySelectorAll(".property-row").forEach(bindRow);
+      const bindGroup = (group) => {
+        const add = group.querySelector("[data-add-row]");
+        const rows = group.querySelector("[data-rows]");
+        if (add && rows) add.addEventListener("click", () => {
+          const row = document.createElement("div");
+          row.className = "property-row";
+          row.innerHTML = '<input placeholder="信息项名称" aria-label="字段名称" /><input placeholder="填写内容" aria-label="字段内容" /><button type="button" data-remove-row>删除</button>';
+          rows.appendChild(row);
+          bindRow(row);
+        });
+        const del = group.querySelector("[data-delete-group]");
+        if (del) del.addEventListener("click", () => group.remove());
+      };
+      root.querySelectorAll("[data-property-group]").forEach(bindGroup);
+      const addGroup = root.querySelector("[data-add-group]");
+      const customGroups = root.querySelector("[data-custom-groups]");
+      if (addGroup && customGroups) addGroup.addEventListener("click", () => {
+        const count = customGroups.querySelectorAll("[data-custom-group]").length + 1;
+        const group = document.createElement("section");
+        group.className = "edit-group";
+        group.dataset.propertyGroup = "";
+        group.dataset.customGroup = "";
+        group.innerHTML = `<div class="group-title"><input value="自定义属性组 ${count}" aria-label="自定义属性组标题" /><button class="delete-group" type="button" data-delete-group>删除属性组</button></div><div data-rows><div class="property-row"><input placeholder="信息项名称" aria-label="字段名称" /><input placeholder="填写内容" aria-label="字段内容" /><button type="button" data-remove-row>删除</button></div></div><button class="add-row" type="button" data-add-row>＋ 添加信息项</button>`;
+        customGroups.appendChild(group);
+        group.querySelectorAll(".property-row").forEach(bindRow);
+        bindGroup(group);
+      });
+    })();
+  </script>
+</div>
+

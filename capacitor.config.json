@@ -1,0 +1,17 @@
+{
+  "appId": "com.assettracker.personal",
+  "appName": "物品守护",
+  "webDir": "dist",
+  "ios": {
+    "backgroundColor": "#f5f5f0",
+    "contentInset": "automatic"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchShowDuration": 1200,
+      "backgroundColor": "#f5f5f0",
+      "showSpinner": false
+    }
+  }
+}

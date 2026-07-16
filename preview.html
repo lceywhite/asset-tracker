@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>资产清单 - 界面预览 v5</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#e8ecf1;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.phone{width:375px;height:780px;background:#f5f6fa;border-radius:36px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;position:relative;border:8px solid #1a1a2e}
+.status-bar{display:flex;justify-content:space-between;padding:8px 20px 4px;font-size:11px;font-weight:600;color:#1a1a2e;background:#fff}
+.screen{display:none;flex-direction:column;height:100%}
+.screen.active{display:flex}
+.overlay{display:none;position:absolute;inset:0;z-index:100}
+.overlay.show{display:block}
+.overlay-bg{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.overlay-sheet{position:absolute;bottom:0;left:0;right:0;background:#f5f6fa;border-radius:20px 20px 0 0;max-height:70%;overflow-y:auto;padding:0 0 20px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-handle{width:36px;height:4px;background:#d0d5e0;border-radius:2px;margin:10px auto}
+.sheet-title{font-size:15px;font-weight:700;text-align:center;color:#1a1a2e;padding:4px 16px 12px}
+.sheet-group-title{font-size:11px;font-weight:600;color:#8e94a5;padding:8px 16px 4px}
+.sheet-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;transition:background .15s;background:#fff}
+.sheet-item:hover{background:#f8f9fd}
+.sheet-item .si-icon{font-size:20px;width:28px;text-align:center}
+.sheet-item .si-info{flex:1}
+.sheet-item .si-info .si-name{font-size:13px;font-weight:600;color:#1a1a2e}
+.sheet-item .si-info .si-meta{font-size:11px;color:#8e94a5}
+.sheet-item .si-check{width:20px;height:20px;border-radius:50%;border:2px solid #d0d5e0;display:flex;align-items:center;justify-content:center}
+.sheet-item .si-check.active{border-color:#4f86f7;background:#4f86f7;color:#fff;font-size:11px}
+.top-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #edf0f5}
+.back-btn{font-size:18px;cursor:pointer;color:#1a1a2e;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0}
+.back-btn:hover{background:#f0f3ff}
+.page-title{flex:1;font-size:15px;font-weight:700;color:#1a1a2e}
+.page-action{font-size:13px;color:#4f86f7;cursor:pointer;font-weight:600;flex-shrink:0}
+.scroll{flex:1;overflow-y:auto;padding:0 16px 12px;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+.section{margin-top:14px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-header h2{font-size:15px;font-weight:700;color:#1a1a2e}
+.section-header .count{font-size:11px;color:#8e94a5;margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{background:#fff;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:transform .15s;position:relative}
+.card .icon{font-size:26px;margin-bottom:4px;display:block}
+.card .name{font-size:12px;font-weight:600;color:#1a1a2e}
+.card .count{font-size:10px;color:#8e94a5;margin-top:2px}
+.card .chips{margin-top:6px;display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+.card .chip{background:#f0f3ff;color:#4f86f7;font-size:8px;padding:1px 5px;border-radius:4px}
+.card-dashed{border:2px dashed #d0d5e0;background:transparent;box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px;color:#b0b7c7}
+.card-dashed .icon{font-size:20px;color:#b0b7c7}
+.card-dashed .name{color:#b0b7c7;font-weight:500}
+.filter-row{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding:2px 0}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{padding:6px 12px;border-radius:20px;font-size:12px;white-space:nowrap;cursor:pointer;transition:all .15s;border:1px solid #d0d5e0;color:#8e94a5;font-weight:500;background:#fff}
+.filter-chip.active{background:#4f86f7;border-color:#4f86f7;color:#fff}
+.search-bar{background:#eef0f5;border-radius:10px;padding:0 12px;height:36px;display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.search-bar span{font-size:12px;color:#a8aebd}
+.search-bar input{flex:1;border:none;background:transparent;font-size:13px;outline:none;color:#1a1a2e}
+.search-bar input::placeholder{color:#a8aebd}
+.item-list{display:flex;flex-direction:column;gap:1px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #edf0f5}
+.item-row{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;transition:background .15s;background:#fff}
+.item-row:hover{background:#f8f9fd}
+.item-row .emoji{font-size:20px;width:28px;text-align:center}
+.item-row .info{flex:1;min-width:0}
+.item-row .info .name{font-size:13px;font-weight:600;color:#1a1a2e}
+.item-row .info .meta{font-size:11px;color:#8e94a5;margin-top:1px}
+.item-row .badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;flex-shrink:0}
+.badge-green{background:#e6f7ee;color:#1a9d5e}
+.badge-blue{background:#f0f3ff;color:#4f86f7}
+.add-row{display:flex;align-items:center;gap:8px;padding:14px;color:#4f86f7;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;border-top:1px solid #edf0f5}
+.add-row:hover{background:#f8f9fd}
+.add-row .icon{font-size:16px;font-weight:700}
+.detail-header{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #edf0f5}
+.detail-photo{width:72px;height:72px;border-radius:14px;background:#eef0f5;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0}
+.detail-summary{flex:1}
+.detail-summary .name{font-size:17px;font-weight:700;color:#1a1a2e}
+.detail-summary .sub{font-size:12px;color:#8e94a5;margin-top:3px}
+.detail-summary .status-tag{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.detail-section{padding:14px 0;border-bottom:1px solid #edf0f5}
+.detail-section:last-child{border-bottom:none}
+.detail-section .ds-title{font-size:11px;font-weight:600;color:#8e94a5;margin-bottom:8px;display:flex;align-items:center;gap:4px}
+.detail-field{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+.detail-field .label{color:#8e94a5}
+.detail-field .value{color:#1a1a2e;font-weight:500;text-align:right;flex:1;margin-left:16px}
+.tag-group{display:flex;gap:6px;flex-wrap:wrap}
+.tag{border-radius:8px;padding:4px 10px;font-size:12px;font-weight:500}
+.tag-blue{background:#f0f3ff;color:#4f86f7}
+.tag-red{background:#fef0f0;color:#e55}
+.tag-gray{background:#f0f1f5;color:#8e94a5}
+.timeline{position:relative;padding-left:20px}
+.timeline::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:#e8ecf1}
+.timeline-item{position:relative;padding:0 0 14px 16px}
+.timeline-item:last-child{padding-bottom:0}
+.timeline-item::before{content:"";position:absolute;left:-2px;top:6px;width:10px;height:10px;border-radius:50%;background:#4f86f7;border:2px solid #fff;box-shadow:0 0 0 2px #4f86f7}
+.timeline-item .tl-time{font-size:10px;color:#8e94a5;margin-bottom:2px}
+.timeline-item .tl-text{font-size:13px;color:#1a1a2e}
+.timeline-item .tl-location{display:inline-block;font-size:11px;font-weight:500}
+.timeline-item .tl-arrow{color:#8e94a5;margin:0 4px}
+.bottom-bar{display:flex;gap:8px;padding:10px 16px 14px;background:#fff;border-top:1px solid #edf0f5}
+.bottom-bar .btn{flex:1;padding:11px;border-radius:12px;font-size:13px;font-weight:600;text-align:center;cursor:pointer}
+.bottom-bar .btn-primary{background:#4f86f7;color:#fff;border:none}
+.bottom-bar .btn-primary:hover{background:#3b7af0}
+.bottom-bar .btn-outline{background:#fff;color:#1a1a2e;border:1px solid #d0d5e0}
+</style>
+</head>
+<body>
+
+<div class="phone" id="app">
+
+  <!-- ===== SCREEN 0: HOME ===== -->
+  <div class="screen active" id="s0">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="top-bar">
+      <div style="flex:1;display:flex;align-items:center;background:#eef0f5;border-radius:10px;padding:0 12px;height:36px;gap:6px">
+        <span style="font-size:12px;color:#a8aebd">🔍</span>
+        <input type="text" placeholder="搜索物品" style="flex:1;border:none;background:transparent;font-size:13px;outline:none;color:#1a1a2e">
+      </div>
+      <div style="width:32px;height:32px;border-radius:8px;border:1px dashed #d0d5e0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#b0b7c7;flex-shrink:0;cursor:pointer">⊞</div>
+    </div>
+    <div class="scroll">
+      <div class="section"><div class="section-header"><h2>🎒 我的包包 <span class="count">2</span></h2></div>
+        <div class="grid">
+          <div class="card" onclick="go(1)"><span class="icon">🎒</span><div class="name">日常通勤</div><div class="count">5 件</div><div class="chips"><span class="chip">钥匙</span><span class="chip">手机</span><span class="chip">+3</span></div></div>
+          <div class="card" onclick="go(1)"><span class="icon">🧳</span><div class="name">出差旅行</div><div class="count">12 件</div></div>
+          <div class="card card-dashed"><span class="icon">+</span><div class="name">新建包</div></div>
+        </div></div>
+      <div class="section"><div class="section-header"><h2>🚪 我的房间 <span class="count">4</span></h2></div>
+        <div class="grid">
+          <div class="card" onclick="go(2)"><span class="icon">🛏️</span><div class="name">卧室</div><div class="count">23 件</div></div>
+          <div class="card"><span class="icon">📖</span><div class="name">书房</div><div class="count">15 件</div></div>
+          <div class="card"><span class="icon">🍳</span><div class="name">厨房</div><div class="count">8 件</div></div>
+          <div class="card"><span class="icon">🚪</span><div class="name">玄关</div><div class="count">4 件</div></div>
+          <div class="card card-dashed"><span class="icon">+</span><div class="name">新建房间</div></div>
+        </div></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:16px 0 8px;padding:12px;border:2px dashed #d0d5e0;border-radius:14px;cursor:pointer;color:#b0b7c7">
+        <span style="font-size:16px;font-weight:700">+</span><span style="font-size:13px">添加新分区（自定义分组）</span>
+      </div>
+    </div>
+    <div style="display:flex;background:#fff;border-top:1px solid #edf0f5;padding:4px 0 8px">
+      <div class="tab active">📦<span>物品</span></div>
+      <div class="tab">✈️<span>行程</span></div>
+      <div class="fab-wrap" style="position:relative;flex:1;display:flex;align-items:center;justify-content:center">
+        <div style="width:46px;height:46px;border-radius:14px;background:#4f86f7;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,134,247,.4);cursor:pointer">+</div>
+      </div>
+      <div class="tab">⚙️<span>设置</span></div>
+    </div>
+    <style>.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;color:#8e94a5;font-size:10px;font-weight:500;padding:6px 0}.tab .icon{font-size:20px}</style>
+  </div>
+
+  <!-- ===== SCREEN 1: BAG DETAIL ===== -->
+  <div class="screen" id="s1">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="top-bar">
+      <div class="back-btn" onclick="home()">←</div>
+      <div class="page-title">🎒 日常通勤</div>
+      <div class="page-action">编辑</div>
+    </div>
+    <div class="scroll">
+      <div style="font-size:11px;color:#8e94a5;margin:8px 0 10px">5 件物品</div>
+      <div class="filter-row">
+        <span class="filter-chip active">全部</span>
+        <span class="filter-chip">📱 电子</span>
+        <span class="filter-chip">🧰 日用</span>
+        <span class="filter-chip">🪪 证件</span>
+      </div>
+      <div class="search-bar"><span>🔍</span><input type="text" placeholder="搜索本包物品..."></div>
+      <div class="item-list">
+        <div class="item-row" onclick="go(3)">
+          <span class="emoji">📱</span><div class="info"><div class="name">手机</div><div class="meta">电子 · ¥8,000</div></div>
+          <span class="badge badge-blue">在包</span>
+        </div>
+        <div class="item-row" onclick="go(3)">
+          <span class="emoji">🎧</span><div class="info"><div class="name">耳机</div><div class="meta">电子 · ¥500</div></div>
+          <span class="badge badge-blue">在包</span>
+        </div>
+        <div class="item-row" onclick="go(3)">
+          <span class="emoji">🗝️</span><div class="info"><div class="name">钥匙</div><div class="meta">日用 · 常驻玄关</div></div>
+          <span class="badge badge-blue">在包</span>
+        </div>
+        <div class="item-row" onclick="go(3)">
+          <span class="emoji">👛</span><div class="info"><div class="name">钱包</div><div class="meta">日用 · 常驻玄关</div></div>
+          <span class="badge badge-blue">在包</span>
+        </div>
+        <div class="item-row" onclick="go(3)">
+          <span class="emoji">💳</span><div class="info"><div class="name">工牌</div><div class="meta">证件 · 常驻玄关</div></div>
+          <span class="badge badge-blue">在包</span>
+        </div>
+        <div class="add-row"><span class="icon">+</span><span>添加物品到此包</span></div>
+      </div>
+    </div>
+    <div class="bottom-bar"><div class="btn btn-outline">📊 统计</div><div class="btn btn-outline">编辑</div></div>
+  </div>
+
+  <!-- ===== SCREEN 2: ROOM DETAIL ===== -->
+  <div class="screen" id="s2">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="top-bar">
+      <div class="back-btn" onclick="home()">←</div>
+      <div class="page-title">🛏️ 卧室</div>
+      <div class="page-action">编辑</div>
+    </div>
+    <div class="scroll">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 10px">
+        <span style="font-size:12px;color:#8e94a5">共 23 件 · 总价值 ¥8,520</span>
+        <span style="font-size:11px;color:#4f86f7;cursor:pointer">按分类排序 ▾</span>
+      </div>
+      <div class="filter-row">
+        <span class="filter-chip active">全部</span>
+        <span class="filter-chip">🛏️ 家具</span>
+        <span class="filter-chip">💡 灯具</span>
+        <span class="filter-chip">📚 书籍</span>
+        <span class="filter-chip">👔 衣物</span>
+        <span class="filter-chip">🖼️ 装饰</span>
+      </div>
+      <div class="search-bar"><span>🔍</span><input type="text" placeholder="搜索本房间物品..."></div>
+      <div class="item-list">
+        <div class="item-row" onclick="go(3)"><span class="emoji">🛏️</span><div class="info"><div class="name">床垫</div><div class="meta">家具 · ¥3,000</div></div><span class="badge badge-green">在库</span></div>
+        <div class="item-row" onclick="go(3)"><span class="emoji">💡</span><div class="info"><div class="name">台灯</div><div class="meta">灯具 · ¥200</div></div><span class="badge badge-green">在库</span></div>
+        <div class="item-row" onclick="go(3)"><span class="emoji">📚</span><div class="info"><div class="name">设计心理学</div><div class="meta">书籍 · ¥68</div></div><span class="badge badge-green">在库</span></div>
+        <div class="item-row" onclick="go(3)"><span class="emoji">🖼️</span><div class="info"><div class="name">装饰画</div><div class="meta">装饰 · ¥150</div></div><span class="badge badge-green">在库</span></div>
+        <div class="add-row"><span class="icon">+</span><span>添加物品到此房间</span></div>
+      </div>
+    </div>
+    <div class="bottom-bar"><div class="btn btn-outline">📊 统计</div><div class="btn btn-outline">📷 拍照盘点</div></div>
+  </div>
+
+  <!-- ===== SCREEN 3: ITEM DETAIL ===== -->
+  <div class="screen" id="s3">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="top-bar">
+      <div class="back-btn" onclick="goBack()">←</div>
+      <div class="page-title">物品详情</div>
+      <div class="page-action">编辑</div>
+    </div>
+    <div class="scroll">
+      <div class="detail-header">
+        <div class="detail-photo">🗝️</div>
+        <div class="detail-summary">
+          <div class="name">钥匙</div>
+          <div class="sub">日用 · 家门+办公室钥匙串</div>
+          <span class="status-tag" style="background:#e6f7ee;color:#1a9d5e">● 在库</span>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="ds-title">📍 当前位置</div>
+        <div style="display:flex;gap:20px;padding:4px 0">
+          <div><div style="font-size:11px;color:#8e94a5;margin-bottom:2px">常驻房间</div><div style="font-size:14px;font-weight:600">🚪 玄关</div></div>
+          <div><div style="font-size:11px;color:#8e94a5;margin-bottom:2px">所属包包</div><div style="font-size:14px;font-weight:600">🎒 日常通勤</div></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="ds-title">📋 位置变动记录</div>
+        <div class="timeline">
+          <div class="timeline-item"><div class="tl-time">今天 08:00</div><div class="tl-text"><span class="tl-location">🚪 玄关</span><span class="tl-arrow">→</span><span class="tl-location">🎒 日常通勤</span></div></div>
+          <div class="timeline-item"><div class="tl-time">昨天 22:00</div><div class="tl-text"><span class="tl-location">🎒 日常通勤</span><span class="tl-arrow">→</span><span class="tl-location">🚪 玄关</span></div></div>
+          <div class="timeline-item"><div class="tl-time">昨天 08:10</div><div class="tl-text"><span class="tl-location">🚪 玄关</span><span class="tl-arrow">→</span><span class="tl-location">🎒 日常通勤</span></div></div>
+          <div class="timeline-item"><div class="tl-time">2026-06-10</div><div class="tl-text">新增物品至 🚪 玄关</div></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="ds-title">🏷️ 标签</div>
+        <div class="tag-group"><span class="tag tag-red">重要</span><span class="tag tag-blue">必带</span><span class="tag tag-gray">易丢</span><span class="tag tag-gray">+ 添加</span></div>
+      </div>
+      <div class="detail-section">
+        <div class="ds-title">📄 基本信息</div>
+        <div class="detail-field"><span class="label">分类</span><span class="value">日用</span></div>
+        <div class="detail-field"><span class="label">预估价值</span><span class="value">¥50</span></div>
+        <div class="detail-field"><span class="label">购买日期</span><span class="value">2024-05-10</span></div>
+        <div class="detail-field"><span class="label">备注</span><span class="value" style="font-weight:400">共3把钥匙，备用钥匙在爸妈家</span></div>
+      </div>
+      <div class="detail-section" style="border-bottom:none">
+        <div class="ds-title" style="cursor:pointer" onclick="this.querySelector('.arrow').textContent=this.querySelector('.arrow').textContent==='›'?'‹':'›';this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          ⚙️ 高级属性 <span class="arrow" style="color:#b0b7c7;font-weight:400;font-size:11px">› 展开</span>
+        </div>
+        <div style="display:none;margin-top:8px">
+          <div class="detail-field"><span class="label">物品编号</span><span class="value" style="font-family:monospace;font-size:11px">AST-20260615-001</span></div>
+          <div class="detail-field"><span class="label">保修到期</span><span class="value">—</span></div>
+          <div style="margin-top:10px;padding:12px;background:#f5f6fa;border-radius:12px;text-align:center">
+            <div style="width:72px;height:72px;background:#eef0f5;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:10px;color:#8e94a5">QR</div>
+            <div style="font-size:11px;color:#8e94a5">扫码查看物品信息 · 打印标签</div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:6px">
+              <span style="font-size:11px;color:#4f86f7;font-weight:600;cursor:pointer">🖨️ 打印</span>
+              <span style="font-size:11px;color:#4f86f7;font-weight:600;cursor:pointer">📤 导出</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: Change location button -->
+    <div style="padding:10px 16px 14px;background:#fff;border-top:1px solid #edf0f5">
+      <div style="display:flex;gap:8px">
+        <div class="btn btn-primary" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;cursor:pointer" onclick="openLocationPicker()">
+          📍 更改位置
+        </div>
+        <div class="btn btn-outline" style="flex-shrink:0;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;background:#fff;color:#1a1a2e;border:1px solid #d0d5e0">
+          编辑
+        </div>
+      </div>
+    </div>
+    <style>.btn-primary{background:#4f86f7;color:#fff;border:none}.btn-primary:hover{background:#3b7af0}.btn-outline{background:#fff;color:#1a1a2e;border:1px solid #d0d5e0}</style>
+  </div>
+
+  <!-- ===== OVERLAY: Location Picker ===== -->
+  <div class="overlay" id="locPicker">
+    <div class="overlay-bg" onclick="closeLocationPicker()"></div>
+    <div class="overlay-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">移动到</div>
+
+      <div class="sheet-group-title">🎒 包包</div>
+      <div style="background:#fff;margin:0 0 4px">
+        <div class="sheet-item" onclick="selectLocation('bag','日常通勤')">
+          <span class="si-icon">🎒</span>
+          <div class="si-info"><div class="si-name">日常通勤</div><div class="si-meta">5 件物品</div></div>
+          <div class="si-check active">✓</div>
+        </div>
+        <div class="sheet-item" onclick="selectLocation('bag','出差旅行')">
+          <span class="si-icon">🧳</span>
+          <div class="si-info"><div class="si-name">出差旅行</div><div class="si-meta">12 件物品</div></div>
+          <div class="si-check"></div>
+        </div>
+      </div>
+
+      <div class="sheet-group-title">🚪 房间</div>
+      <div style="background:#fff;margin:0 0 4px">
+        <div class="sheet-item" onclick="selectLocation('room','卧室')">
+          <span class="si-icon">🛏️</span>
+          <div class="si-info"><div class="si-name">卧室</div><div class="si-meta">23 件物品</div></div>
+          <div class="si-check"></div>
+        </div>
+        <div class="sheet-item" onclick="selectLocation('room','书房')">
+          <span class="si-icon">📖</span>
+          <div class="si-info"><div class="si-name">书房</div><div class="si-meta">15 件物品</div></div>
+          <div class="si-check"></div>
+        </div>
+        <div class="sheet-item" onclick="selectLocation('room','厨房')">
+          <span class="si-icon">🍳</span>
+          <div class="si-info"><div class="si-name">厨房</div><div class="si-meta">8 件物品</div></div>
+          <div class="si-check"></div>
+        </div>
+        <div class="sheet-item" onclick="selectLocation('room','玄关')">
+          <span class="si-icon">🚪</span>
+          <div class="si-info"><div class="si-name">玄关</div><div class="si-meta">4 件物品</div></div>
+          <div class="si-check"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let history = [0];
+function go(n) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('s'+n).classList.add('active'); history.push(n); }
+function home() { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('s0').classList.add('active'); history = [0]; }
+function goBack() { history.pop(); const prev = history[history.length-1]||0; document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('s'+prev).classList.add('active'); }
+function openLocationPicker() { document.getElementById('locPicker').classList.add('show'); }
+function closeLocationPicker() { document.getElementById('locPicker').classList.remove('show'); }
+function selectLocation(type, name) {
+  document.querySelectorAll('.si-check').forEach(c => c.classList.remove('active'));
+  event.currentTarget.querySelector('.si-check').classList.add('active');
+  // Show a brief success feedback
+  const btn = document.querySelector('#s3 .btn-primary');
+  const orig = btn.textContent;
+  btn.textContent = '✓ 已移至 ' + name;
+  btn.style.background = '#1a9d5e';
+  setTimeout(() => { closeLocationPicker(); btn.textContent = orig; btn.style.background = ''; }, 800);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<div id="item-space-refined-v3">
+  <style>
+    #item-space-refined-v3 { width: 100%; color: var(--foreground); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #item-space-refined-v3 * { box-sizing: border-box; }
+    #item-space-refined-v3 button, #item-space-refined-v3 input, #item-space-refined-v3 textarea { font: inherit; }
+    #item-space-refined-v3 [hidden] { display: none !important; }
+    #item-space-refined-v3 .preview-nav { justify-content: center; margin-bottom: 16px; }
+    #item-space-refined-v3 .app { width: min(100%, 440px); margin: 0 auto; }
+    #item-space-refined-v3 .topbar { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; padding: 8px 2px 12px; }
+    #item-space-refined-v3 .topbar h2, #item-space-refined-v3 .topbar p { margin: 0; }
+    #item-space-refined-v3 .plain { border: 0; background: transparent; color: var(--foreground); padding: 7px; }
+    #item-space-refined-v3 .link { border: 0; background: transparent; color: var(--primary); padding: 5px; }
+    #item-space-refined-v3 .search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 15px; }
+    #item-space-refined-v3 .search { position: relative; }
+    #item-space-refined-v3 .search input { width: 100%; padding-left: 34px; }
+    #item-space-refined-v3 .search span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); }
+    #item-space-refined-v3 .section-head { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin: 19px 2px 9px; }
+    #item-space-refined-v3 .section-head h3, #item-space-refined-v3 .section-head p { margin: 0; }
+    #item-space-refined-v3 .section-title { cursor: default; }
+    #item-space-refined-v3 .space-card { padding: 12px; margin-bottom: 9px; }
+    #item-space-refined-v3 .card-main { width: 100%; display: grid; grid-template-columns: 58px 1fr auto; gap: 11px; align-items: center; border: 0; background: transparent; color: var(--card-foreground); text-align: left; padding: 0; }
+    #item-space-refined-v3 .avatar { width: 58px; height: 58px; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(145deg, var(--muted), color-mix(in srgb, var(--accent) 65%, var(--muted))); position: relative; overflow: hidden; }
+    #item-space-refined-v3 .avatar::after { content: "照片"; position: absolute; right: 2px; bottom: 2px; padding: 2px 4px; border-radius: 6px; background: var(--card); color: var(--card-foreground); }
+    #item-space-refined-v3 .card-main h3, #item-space-refined-v3 .card-main p { margin: 0; }
+    #item-space-refined-v3 .card-main h3 { font-weight: 500; }
+    #item-space-refined-v3 .finance { color: var(--muted-foreground); text-align: right; }
+    #item-space-refined-v3 .finance strong { display: block; color: var(--foreground); font-weight: 500; }
+    #item-space-refined-v3 .path { display: block; color: var(--muted-foreground); margin-top: 3px; }
+    #item-space-refined-v3 .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 11px; }
+    #item-space-refined-v3 .preview-tile { min-width: 0; border: 0; border-radius: 10px; padding: 9px 6px; background: var(--muted); color: var(--foreground); text-align: left; }
+    #item-space-refined-v3 .preview-tile strong, #item-space-refined-v3 .preview-tile span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #item-space-refined-v3 .preview-tile strong { font-weight: 500; margin: 4px 0 2px; }
+    #item-space-refined-v3 .empty-add { width: 100%; border: 1px dashed var(--border); border-radius: 12px; background: transparent; color: var(--muted-foreground); padding: 11px; margin-top: 8px; }
+    #item-space-refined-v3 .trail { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 0 2px 10px; color: var(--muted-foreground); }
+    #item-space-refined-v3 .trail button { border: 0; background: transparent; color: var(--primary); padding: 0; }
+    #item-space-refined-v3 .detail-hero { padding: 14px; margin-bottom: 14px; }
+    #item-space-refined-v3 .hero-main { display: grid; grid-template-columns: 64px 1fr auto; gap: 11px; align-items: center; }
+    #item-space-refined-v3 .hero-main .avatar { width: 64px; height: 64px; }
+    #item-space-refined-v3 .hero-main h2, #item-space-refined-v3 .hero-main p { margin: 0; }
+    #item-space-refined-v3 .metrics { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 8px; color: var(--muted-foreground); }
+    #item-space-refined-v3 .metrics strong { color: var(--foreground); font-weight: 500; }
+    #item-space-refined-v3 .hero-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 13px; }
+    #item-space-refined-v3 .layout-head { display: flex; align-items: center; gap: 5px; margin: 18px 2px 9px; }
+    #item-space-refined-v3 .layout-head h3 { margin: 0; }
+    #item-space-refined-v3 .layout-head .edit-layout { margin-left: auto; }
+    #item-space-refined-v3 .next-layout { border: 0; background: transparent; color: var(--primary); padding: 4px; }
+    #item-space-refined-v3 .add-layout { border: 1px dashed var(--border); background: transparent; color: var(--primary); border-radius: 10px; padding: 5px 9px; }
+    #item-space-refined-v3 .layout-canvas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; min-height: 160px; margin-bottom: 13px; }
+    #item-space-refined-v3 .layout-node { border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--card) 84%, var(--accent)); color: var(--card-foreground); text-align: left; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+    #item-space-refined-v3 .layout-node:first-child { grid-row: 1 / 3; }
+    #item-space-refined-v3 .layout-node:last-child { grid-column: 3; grid-row: 1 / 3; }
+    #item-space-refined-v3 .layout-node strong { font-weight: 500; display: block; }
+    #item-space-refined-v3 .layout-editing .layout-node { cursor: move; border-style: dashed; }
+    #item-space-refined-v3 .drag-label { display: none; color: var(--muted-foreground); }
+    #item-space-refined-v3 .layout-editing .drag-label { display: block; }
+    #item-space-refined-v3 .no-layout { padding: 12px 0; color: var(--muted-foreground); border-bottom: 1px solid var(--border); }
+    #item-space-refined-v3 .list-head { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 18px 2px 8px; }
+    #item-space-refined-v3 .list-head h3, #item-space-refined-v3 .list-head p { margin: 0; }
+    #item-space-refined-v3 .item-row { width: 100%; display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: center; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--foreground); text-align: left; padding: 10px 2px; }
+    #item-space-refined-v3 .item-row strong { display: block; font-weight: 500; }
+    #item-space-refined-v3 .item-thumb { width: 46px; height: 46px; border-radius: 12px; background: var(--muted); display: grid; place-items: center; }
+    #item-space-refined-v3 .item-value { text-align: right; color: var(--muted-foreground); }
+    #item-space-refined-v3 .item-value strong { color: var(--foreground); }
+    #item-space-refined-v3 .manage-list { border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    #item-space-refined-v3 .manage-row { width: 100%; display: grid; grid-template-columns: auto 44px 1fr auto; gap: 10px; align-items: center; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--foreground); text-align: left; padding: 11px 2px; }
+    #item-space-refined-v3 .handle { color: var(--muted-foreground); }
+    #item-space-refined-v3 .manage-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--muted); }
+    #item-space-refined-v3 .manage-row strong { display: block; font-weight: 500; }
+    #item-space-refined-v3 .editor { padding: 14px; }
+    #item-space-refined-v3 .editor h3 { margin-top: 0; }
+    #item-space-refined-v3 .field { display: grid; gap: 5px; margin-bottom: 11px; }
+    #item-space-refined-v3 .field label { color: var(--muted-foreground); }
+    #item-space-refined-v3 .field input, #item-space-refined-v3 .field textarea { width: 100%; }
+    #item-space-refined-v3 .editor-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    #item-space-refined-v3 .bottom { display: grid; grid-template-columns: 1fr 1fr 58px 1fr 1fr; align-items: end; margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--border); }
+    #item-space-refined-v3 .bottom button { border: 0; background: transparent; color: var(--muted-foreground); padding: 7px 2px; }
+    #item-space-refined-v3 .bottom .active { color: var(--foreground); }
+    #item-space-refined-v3 .bottom .add { width: 50px; height: 50px; justify-self: center; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); }
+    @media (max-width: 375px) {
+      #item-space-refined-v3 .preview-grid, #item-space-refined-v3 .layout-canvas { grid-template-columns: 1fr 1fr; }
+      #item-space-refined-v3 .layout-node:first-child, #item-space-refined-v3 .layout-node:last-child { grid-row: auto; grid-column: auto; }
+      #item-space-refined-v3 .card-main, #item-space-refined-v3 .hero-main { grid-template-columns: 52px 1fr; }
+      #item-space-refined-v3 .finance { grid-column: 2; text-align: left; }
+    }
+  </style>
+
+  <div class="viz-controls preview-nav" role="tablist" aria-label="物品空间界面预览">
+    <button class="btn btn-primary" type="button" data-show="home" aria-selected="true">物品主页</button>
+    <button class="btn" type="button" data-open="house" aria-selected="false">空间详情</button>
+    <button class="btn" type="button" data-show="manage" aria-selected="false">分区管理</button>
+  </div>
+
+  <main class="app">
+    <section data-page="home">
+      <header class="topbar"><span></span><div><p class="text-small text-muted">个人物品库</p><h2>物品</h2></div><button class="link" type="button">扫码</button></header>
+      <div class="search-row"><label class="search"><span>⌕</span><span class="sr-only">搜索</span><input class="form-control" type="search" placeholder="搜索物品、空间或标签" /></label><button class="btn" type="button">空间 ▾</button></div>
+
+      <section>
+        <div class="section-head"><div class="section-title" data-section-title="我的包包"><h3>我的包包</h3><p class="text-small text-muted">随身与旅行收纳</p></div><button class="link" type="button" data-show="manage">管理</button></div>
+        <article class="card space-card">
+          <button class="card-main" type="button" data-open="bag"><span class="avatar">🎒</span><span><h3>通勤背包</h3><span class="path text-small">12 件物品</span></span><span class="finance text-small"><span>空间 ¥899</span><strong>藏品 ¥8,640</strong></span></button>
+          <div class="preview-grid" aria-label="背包内物品预览"><button class="preview-tile" type="button"><span>💻</span><strong>MacBook Air</strong><span class="text-small">¥6,200</span></button><button class="preview-tile" type="button"><span>🎧</span><strong>AirPods Pro</strong><span class="text-small">¥1,099</span></button><button class="preview-tile" type="button"><span>🔑</span><strong>家门钥匙</strong><span class="text-small">重要</span></button></div>
+        </article>
+        <article class="card space-card"><button class="card-main" type="button" data-open="suitcase"><span class="avatar">🧳</span><span><h3>28 寸行李箱</h3><span class="path text-small">21 件物品</span></span><span class="finance text-small"><span>空间 ¥1,299</span><strong>藏品 ¥16,220</strong></span></button><div class="preview-grid"><button class="preview-tile" type="button"><span>🧥</span><strong>冬季外套</strong><span class="text-small">衣物</span></button><button class="preview-tile" type="button"><span>🧴</span><strong>洗漱包</strong><span class="text-small">旅行</span></button></div></article>
+        <button class="empty-add" type="button">＋ 新增移动容器</button>
+      </section>
+
+      <section>
+        <div class="section-head"><div class="section-title" data-section-title="我的家"><h3>我的家</h3><p class="text-small text-muted">房屋与固定收纳</p></div><button class="link" type="button" data-show="manage">管理</button></div>
+        <article class="card space-card">
+          <button class="card-main" type="button" data-open="house"><span class="avatar">🏡</span><span><h3>滨江花园 8 栋</h3><span class="path text-small">5 个区域 · 96 件物品</span></span><span class="finance text-small"><span>空间 ¥620 万</span><strong>藏品 ¥82,460</strong></span></button>
+          <div class="preview-grid" aria-label="房屋区域预览"><button class="preview-tile" type="button" data-open="entry"><span>🚪</span><strong>玄关</strong><span class="text-small">6 件</span></button><button class="preview-tile" type="button" data-open="bedroom"><span>🛏</span><strong>卧室 1</strong><span class="text-small">31 件</span></button><button class="preview-tile" type="button" data-open="study"><span>📚</span><strong>书房</strong><span class="text-small">38 件</span></button></div>
+        </article>
+        <button class="empty-add" type="button">＋ 新增空间</button>
+      </section>
+
+      <section>
+        <div class="section-head"><div class="section-title" data-section-title="我的车库"><h3>我的车库</h3><p class="text-small text-muted">车辆与车内收纳</p></div><button class="link" type="button" data-show="manage">管理</button></div>
+        <article class="card space-card"><button class="card-main" type="button" data-open="car"><span class="avatar">🚙</span><span><h3>小灰 · SUV</h3><span class="path text-small">2 个区域 · 18 件物品</span></span><span class="finance text-small"><span>空间 ¥18.6 万</span><strong>藏品 ¥6,980</strong></span></button><div class="preview-grid"><button class="preview-tile" type="button"><span>🪑</span><strong>乘员舱</strong><span class="text-small">7 件</span></button><button class="preview-tile" type="button" data-open="trunk"><span>▰</span><strong>后备箱</strong><span class="text-small">11 件</span></button></div></article>
+        <button class="empty-add" type="button">＋ 新增空间</button>
+      </section>
+      <button class="empty-add" type="button">＋ 新增分区</button>
+    </section>
+
+    <section data-page="detail" hidden>
+      <header class="topbar"><button class="plain" type="button" data-show="home">‹ 返回</button><div><p class="text-small text-muted" data-parent>我的家</p><h2>空间详情</h2></div><button class="link" type="button">•••</button></header>
+      <nav class="trail" data-trail></nav>
+      <section class="card detail-hero">
+        <div class="hero-main"><span class="avatar" data-avatar>🏡</span><span><h2 data-title>滨江花园 8 栋</h2><span class="metrics text-small"><span><strong data-child-count>5</strong> 个区域</span><span><strong data-item-count>96</strong> 件物品</span></span></span><span class="finance text-small"><strong data-collection>¥82,460</strong>藏品价值</span></div>
+        <div class="hero-actions"><button class="btn btn-primary btn-block" type="button" data-add-child>＋ 添加区域</button><button class="btn btn-block" type="button">＋ 添加物品</button></div>
+      </section>
+
+      <div data-layout-block>
+        <div class="layout-head"><h3 data-layout-name>一层</h3><button class="next-layout" type="button" data-next-layout>›</button><button class="add-layout" type="button" data-add-layout hidden>＋</button><button class="link edit-layout" type="button" data-edit-layout>编辑</button></div>
+        <div class="layout-canvas" data-layout-canvas></div>
+      </div>
+
+      <div class="list-head"><div><h3>物品清单</h3><p class="text-small text-muted">直属于当前空间的物品</p></div><button class="btn" type="button">核对</button></div>
+      <div data-items></div>
+    </section>
+
+    <section data-page="manage" hidden>
+      <header class="topbar"><button class="plain" type="button" data-show="home">‹ 返回</button><div><p class="text-small text-muted">主页设置</p><h2>分区管理</h2></div><button class="link" type="button">完成</button></header>
+      <p class="text-small text-muted">拖动调整主页顺序；点击分区进入编辑。默认分区可以改名，自定义分区可以删除。</p>
+      <div class="manage-list">
+        <button class="manage-row" type="button" data-edit-section="我的包包" data-description="随身与旅行收纳"><span class="handle">☰</span><span class="manage-icon">🎒</span><span><strong>我的包包</strong><span class="path text-small">2 个移动容器</span></span><span>›</span></button>
+        <button class="manage-row" type="button" data-edit-section="我的家" data-description="房屋与固定收纳"><span class="handle">☰</span><span class="manage-icon">🏠</span><span><strong>我的家</strong><span class="path text-small">1 个空间</span></span><span>›</span></button>
+        <button class="manage-row" type="button" data-edit-section="我的车库" data-description="车辆与车内收纳"><span class="handle">☰</span><span class="manage-icon">🚙</span><span><strong>我的车库</strong><span class="path text-small">1 个空间</span></span><span>›</span></button>
+        <button class="manage-row" type="button" data-edit-section="公司仓库" data-description="工作设备与耗材"><span class="handle">☰</span><span class="manage-icon">🏢</span><span><strong>公司仓库</strong><span class="path text-small">自定义分区 · 3 个空间</span></span><span>›</span></button>
+      </div>
+      <button class="btn btn-block" type="button">＋ 新增分区</button>
+      <section class="card editor" data-editor>
+        <h3>编辑分区</h3>
+        <label class="field"><span>分区名称</span><input class="form-control" type="text" data-section-name value="我的包包" /></label>
+        <label class="field"><span>说明</span><textarea class="form-control" data-section-description>随身与旅行收纳</textarea></label>
+        <div class="editor-actions"><button class="btn text-destructive" type="button" data-delete-section disabled>默认分区不可删除</button><button class="btn btn-primary" type="button">保存</button></div>
+      </section>
+    </section>
+
+    <nav class="bottom" aria-label="应用主导航"><button class="active" type="button">▣<br />物品</button><button type="button">◇<br />行程</button><button class="add" type="button">＋</button><button type="button">○<br />社区</button><button type="button">●<br />我的</button></nav>
+  </main>
+
+  <script>
+    (() => {
+      const root = document.getElementById("item-space-refined-v3");
+      if (!root) return;
+      const spaces = {
+        house: { title: "滨江花园 8 栋", avatar: "🏡", parent: "我的家", childLabel: "区域", collection: "¥82,460", itemCount: 96, trail: ["我的家", "滨江花园 8 栋"], layouts: [{ name: "一层", children: [["玄关", "entry", "🚪", "6 件"], ["卧室 1", "bedroom", "🛏", "31 件"], ["书房", "study", "📚", "38 件"], ["客厅", "living", "🛋", "18 件"]] }, { name: "二层", children: [["客卧", "guest", "🛏", "12 件"], ["储藏室", "storage", "📦", "24 件"]] }], items: [["扫地机器人", "🤖", "¥1,899"], ["家庭工具箱", "🧰", "¥680"]] },
+        study: { title: "书房", avatar: "📚", parent: "滨江花园 8 栋", childLabel: "容器", collection: "¥41,280", itemCount: 38, trail: ["我的家", "滨江花园 8 栋", "书房"], layouts: [{ name: "默认布局", children: [["书桌抽屉", "drawer", "▤", "18 件"], ["防潮柜", "cabinet", "📷", "9 件"], ["工具小推车", "cart", "🛒", "7 件"]] }], items: [["人体工学椅", "🪑", "¥3,200"], ["落地灯", "💡", "¥580"]] },
+        entry: { title: "玄关", avatar: "🚪", parent: "滨江花园 8 栋", childLabel: "容器", collection: "¥2,680", itemCount: 6, trail: ["我的家", "滨江花园 8 栋", "玄关"], layouts: [{ name: "默认布局", children: [["鞋柜", "shoe", "👟", "4 件"], ["钥匙托盘", "keys", "🔑", "2 件"]] }], items: [["全身镜", "🪞", "¥899"]] },
+        bedroom: { title: "卧室 1", avatar: "🛏", parent: "滨江花园 8 栋", childLabel: "容器", collection: "¥18,300", itemCount: 31, trail: ["我的家", "滨江花园 8 栋", "卧室 1"], layouts: [{ name: "默认布局", children: [["衣柜", "wardrobe", "👕", "22 件"], ["床头抽屉", "bedside", "▤", "6 件"]] }], items: [["空气净化器", "🌬", "¥1,499"]] },
+        bag: { title: "通勤背包", avatar: "🎒", parent: "我的包包", childLabel: "子容器", collection: "¥8,640", itemCount: 12, trail: ["我的包包", "通勤背包"], layouts: [], items: [["MacBook Air", "💻", "¥6,200"], ["AirPods Pro", "🎧", "¥1,099"], ["公司门禁卡", "💳", "—"], ["家门钥匙", "🔑", "—"]] },
+        suitcase: { title: "28 寸行李箱", avatar: "🧳", parent: "我的包包", childLabel: "子容器", collection: "¥16,220", itemCount: 21, trail: ["我的包包", "28 寸行李箱"], layouts: [], items: [["冬季外套", "🧥", "¥2,800"], ["旅行洗漱包", "🧴", "¥560"]] },
+        car: { title: "小灰 · SUV", avatar: "🚙", parent: "我的车库", childLabel: "区域", collection: "¥6,980", itemCount: 18, trail: ["我的车库", "小灰 · SUV"], layouts: [{ name: "整车布局", children: [["乘员舱", "cabin", "🪑", "7 件"], ["后备箱", "trunk", "▰", "11 件"]] }], items: [["行车记录仪", "📹", "¥899"]] },
+        trunk: { title: "后备箱", avatar: "▰", parent: "小灰 · SUV", childLabel: "容器", collection: "¥4,820", itemCount: 11, trail: ["我的车库", "小灰 · SUV", "后备箱"], layouts: [{ name: "默认布局", children: [["露营箱", "camp", "📦", "8 件"]] }], items: [["车载吸尘器", "🌀", "¥399"], ["折叠椅", "🪑", "¥680"]] }
+      };
+      const fallback = (key) => ({ title: key, avatar: "📦", parent: "上一级空间", childLabel: "容器", collection: "¥0", itemCount: 0, trail: [key], layouts: [], items: [] });
+      let current = "house";
+      let layoutIndex = 0;
+      let dragged = null;
+      const show = (name) => root.querySelectorAll("[data-page]").forEach((page) => { page.hidden = page.dataset.page !== name; });
+      const renderItems = (items) => {
+        const host = root.querySelector("[data-items]"); host.innerHTML = "";
+        items.forEach(([name, icon, value]) => { const button = document.createElement("button"); button.type = "button"; button.className = "item-row"; button.innerHTML = `<span class="item-thumb">${icon}</span><span><strong>${name}</strong><span class="path text-small">直属于当前空间</span></span><span class="item-value"><strong>${value}</strong><span class="text-small">估值</span></span>`; host.appendChild(button); });
+        if (!items.length) host.innerHTML = '<p class="no-layout">当前空间没有直属物品</p>';
+      };
+      const renderLayout = () => {
+        const data = spaces[current] || fallback(current); const block = root.querySelector("[data-layout-block]");
+        if (!data.layouts.length) { block.hidden = true; return; }
+        block.hidden = false; layoutIndex = Math.min(layoutIndex, data.layouts.length - 1); const layout = data.layouts[layoutIndex];
+        root.querySelector("[data-layout-name]").textContent = layout.name; root.querySelector("[data-next-layout]").hidden = data.layouts.length < 2;
+        const canvas = root.querySelector("[data-layout-canvas]"); canvas.innerHTML = "";
+        layout.children.forEach(([name, key, icon, count], index) => { const button = document.createElement("button"); button.type = "button"; button.className = "layout-node"; button.draggable = canvas.classList.contains("layout-editing"); button.dataset.index = index; button.innerHTML = `<span>${icon}<span class="drag-label text-small">拖动排版</span></span><span><strong>${name}</strong><span class="text-small">${count}</span></span>`; button.addEventListener("click", () => { if (!canvas.classList.contains("layout-editing")) openSpace(key); }); button.addEventListener("dragstart", () => { dragged = index; }); button.addEventListener("dragover", (event) => event.preventDefault()); button.addEventListener("drop", () => { if (dragged === null || dragged === index) return; const moved = layout.children.splice(dragged, 1)[0]; layout.children.splice(index, 0, moved); dragged = null; renderLayout(); root.querySelector("[data-layout-canvas]").classList.add("layout-editing"); }); canvas.appendChild(button); });
+      };
+      const openSpace = (key) => { current = key; layoutIndex = 0; const data = spaces[key] || fallback(key); root.querySelector("[data-parent]").textContent = data.parent; root.querySelector("[data-avatar]").textContent = data.avatar; root.querySelector("[data-title]").textContent = data.title; const childCount = data.layouts.flatMap((layout) => layout.children).length; root.querySelector("[data-child-count]").textContent = childCount; root.querySelector("[data-child-count]").parentElement.lastChild.textContent = ` 个${data.childLabel}`; root.querySelector("[data-item-count]").textContent = data.itemCount; root.querySelector("[data-collection]").textContent = data.collection; root.querySelector("[data-add-child]").textContent = `＋ 添加${data.childLabel}`; root.querySelector("[data-trail]").innerHTML = data.trail.map((part, index) => index === data.trail.length - 1 ? `<span>${part}</span>` : `<button type="button">${part}</button><span>›</span>`).join(""); root.querySelector("[data-layout-canvas]").classList.remove("layout-editing"); root.querySelector("[data-add-layout]").hidden = true; root.querySelector("[data-edit-layout]").textContent = "编辑"; renderLayout(); renderItems(data.items); show("detail"); };
+      root.querySelectorAll("[data-show]").forEach((button) => button.addEventListener("click", () => show(button.dataset.show)));
+      root.querySelectorAll("[data-open]").forEach((button) => button.addEventListener("click", () => openSpace(button.dataset.open)));
+      root.querySelectorAll("[data-section-title]").forEach((title) => title.addEventListener("dblclick", () => { root.querySelector("[data-section-name]").value = title.dataset.sectionTitle; show("manage"); }));
+      root.querySelector("[data-next-layout]").addEventListener("click", () => { const layouts = (spaces[current] || fallback(current)).layouts; layoutIndex = (layoutIndex + 1) % layouts.length; renderLayout(); });
+      root.querySelector("[data-edit-layout]").addEventListener("click", (event) => { const canvas = root.querySelector("[data-layout-canvas]"); const editing = canvas.classList.toggle("layout-editing"); root.querySelector("[data-add-layout]").hidden = !editing; event.currentTarget.textContent = editing ? "完成" : "编辑"; renderLayout(); if (editing) root.querySelector("[data-layout-canvas]").classList.add("layout-editing"); });
+      root.querySelector("[data-add-layout]").addEventListener("click", () => { const data = spaces[current] || fallback(current); data.layouts.push({ name: `布局 ${data.layouts.length + 1}`, children: [] }); layoutIndex = data.layouts.length - 1; renderLayout(); root.querySelector("[data-layout-canvas]").classList.add("layout-editing"); });
+      root.querySelectorAll("[data-edit-section]").forEach((button) => button.addEventListener("click", () => { const name = button.dataset.editSection; root.querySelector("[data-section-name]").value = name; root.querySelector("[data-section-description]").value = button.dataset.description; const removable = name === "公司仓库"; const deleteButton = root.querySelector("[data-delete-section]"); deleteButton.disabled = !removable; deleteButton.textContent = removable ? "删除分区" : "默认分区不可删除"; }));
+    })();
+  </script>
+</div>
+
