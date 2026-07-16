@@ -2,15 +2,15 @@
 import { ref, computed, onMounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useActivityStore } from "@/stores/useActivityStore"
-import { useBagStore } from "@/stores/useBagStore"
 import * as sessionService from "@/services/checkSessionService"
+import * as nodeService from "@/services/spaceNodeService"
 import { Haptics, ImpactStyle } from "@capacitor/haptics"
 import TripForm from "@/components/trip/TripForm.vue"
 
 const route = useRoute()
 const router = useRouter()
 const store = useActivityStore()
-const bagStore = useBagStore()
+const spaceNodes = ref([])
 const trip = ref(null)
 const editing = ref(false)
 const checkMode = ref(false)
@@ -44,7 +44,7 @@ const packedGroups = computed(() => {
     groups[key].items.push(item)
   }
   for (const key of Object.keys(groups)) {
-    const bag = bagStore.bags.find((entry) => entry.id === key)
+    const bag = spaceNodes.value.find((entry) => entry.id === key)
     groups[key].bagName = key === "_other" ? "📦 其他" : bag ? `${bag.icon || "🎒"} ${bag.name}` : "🎒 未知容器"
   }
   return Object.values(groups).sort((a, b) => (a.bagId === "_other" ? 1 : b.bagId === "_other" ? -1 : 0))
@@ -63,7 +63,8 @@ async function loadSessions() {
   sessions.value = trip.value ? await sessionService.getByPlan(trip.value.id) : []
 }
 onMounted(async () => {
-  await Promise.all([store.loadAll(), bagStore.loadAll()])
+  await store.loadAll()
+  spaceNodes.value = await nodeService.getAllNodes()
   trip.value = store.activities.find((activity) => activity.id === route.params.id) || null
   await loadSessions()
 })

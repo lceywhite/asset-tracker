@@ -22,6 +22,7 @@
 ## 03 — 物品模块 v3
 
 - [设计总说明](03-item-module-v3/item-module-v3-design-spec.md)：物品档案与物品主页的最终设计基线。
+- [后端实现记录](03-item-module-v3/item-module-v3-backend-implementation.md)：数据库 v6、兼容迁移、物品档案、空间树、布局和备份能力。
 - [设计迭代日志](03-item-module-v3/item-module-v3-iteration-log.md)：产品经理可读的逐轮设计变化。
 - [档案设计决策与待办](03-item-module-v3/item-module-design-decisions.md)：字段、属性组和估值偏好。
 - [主页历史设计记录](03-item-module-v3/item-home-design-history-v3.md)：被调整与被否决方案的过程记录。

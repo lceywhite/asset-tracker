@@ -24,16 +24,21 @@ export const useItemStore = defineStore("items", () => {
     await svc.deleteItem(id)
     items.value = items.value.filter((i) => i.id !== id)
   }
-  const itemsByRoom = (roomId) => items.value.filter((i) => i.roomId === roomId)
-  const itemsByBag = (bagId) => items.value.filter((i) => i.bagId === bagId)
+  const itemsByLocation = (nodeId) => items.value.filter((i) => i.locationNodeId === nodeId)
+  const moveItem = async (id, nodeId, metadata) => {
+    const updated = await svc.moveItem(id, nodeId, metadata)
+    const index = items.value.findIndex((item) => item.id === id)
+    if (index >= 0) items.value[index] = updated
+    return updated
+  }
   const search = (query) => {
     const q = query.toLowerCase()
     return items.value.filter(
       (i) =>
-        i.name.toLowerCase().includes(q) ||
-        i.category.toLowerCase().includes(q) ||
-        i.tags.some((t) => t.toLowerCase().includes(q)),
+        (i.name || "").toLowerCase().includes(q) ||
+        (i.category || "").toLowerCase().includes(q) ||
+        (i.tags || []).some((t) => t.toLowerCase().includes(q)),
     )
   }
-  return { items, loading, loadItems, addItem, editItem, removeItem, itemsByRoom, itemsByBag, search }
+  return { items, loading, loadItems, addItem, editItem, removeItem, moveItem, itemsByLocation, search }
 })

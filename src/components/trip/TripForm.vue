@@ -6,14 +6,20 @@ const props = defineProps({
 })
 import { ref, reactive, computed, onMounted, watch } from "vue"
 import { useActivityStore } from "@/stores/useActivityStore"
-import { useBagStore } from "@/stores/useBagStore"
-import { useRoomStore } from "@/stores/useRoomStore"
 import { useItemStore } from "@/stores/useItemStore"
+import * as nodeService from "@/services/spaceNodeService"
+import * as itemService from "@/services/itemService"
 const emit = defineEmits(["close", "created"])
 const store = useActivityStore()
-const bagStore = useBagStore()
-const roomStore = useRoomStore()
 const itemStore = useItemStore()
+const spaceNodes = ref([])
+const mobileContainers = computed(() =>
+  spaceNodes.value.filter((node) => node.kind === "container" && node.mobility === "mobile"),
+)
+const fixedLocations = computed(() => spaceNodes.value.filter((node) => node.mobility !== "mobile"))
+async function loadSpaceNodes() {
+  spaceNodes.value = await nodeService.getAllNodes()
+}
 const today = new Date().toISOString().split("T")[0]
 const form = reactive({
   title: "",
@@ -67,7 +73,7 @@ const packedGroups = computed(() => {
     if (k === "_other") {
       g[k].bagName = "📦 其他"
     } else {
-      const b = bagStore.bags.find((x) => x.id === k)
+      const b = mobileContainers.value.find((x) => x.id === k)
       g[k].bagName = b ? (b.icon || "🎒") + " " + b.name : "🎒 未知"
     }
   }
@@ -83,20 +89,27 @@ function toggleCombine(item) {
   else combineSel.value.push(item)
 }
 async function doCombine() {
-  const n = prompt("新包包名称：")
+  const n = prompt("新移动容器名称：")
   if (!n) return
-  const bag = await bagStore.create({ name: n })
+  const bag = await nodeService.createNode({
+    name: n,
+    sectionId: "section-bags",
+    parentId: "",
+    kind: "container",
+    mobility: "mobile",
+    icon: "🎒",
+  })
   for (const item of combineSel.value) {
     const idx = packingItems.value.indexOf(item)
     if (idx >= 0) {
       const dbItem = itemStore.items.find((i) => i.name === item.name)
       if (dbItem) {
-        await import("@/services/itemService").then((m) => m.updateItem(dbItem.id, { bagId: bag.id }))
+        await itemService.moveItem(dbItem.id, bag.id, { reason: "行程中组合为移动容器" })
       }
       packingItems.value[idx] = Object.assign({}, packingItems.value[idx], { sourceBagId: bag.id })
     }
   }
-  await bagStore.loadAll()
+  await loadSpaceNodes()
   await itemStore.loadItems()
   combineMode.value = false
   combineSel.value = []
@@ -109,8 +122,7 @@ const selQ = ref("")
 const selBatchReminder = ref("return")
 
 onMounted(() => {
-  bagStore.loadAll()
-  roomStore.loadAll()
+  loadSpaceNodes()
   itemStore.loadItems()
 })
 watch(
@@ -192,8 +204,7 @@ function openSel() {
   selQ.value = ""
   showSel.value = true
   itemStore.loadItems()
-  bagStore.loadAll()
-  roomStore.loadAll()
+  loadSpaceNodes()
 }
 function toggleSelItem(itemId) {
   const i = selItems.value.indexOf(itemId)
@@ -221,7 +232,7 @@ function confirmSel() {
         name: it.name,
         category: it.category || "日用",
         reminderType: selBatchReminder.value,
-        sourceBagId: it.bagId || "",
+        sourceBagId: mobileContainers.value.some((node) => node.id === it.locationNodeId) ? it.locationNodeId : "",
       })
     }
   }
@@ -232,8 +243,8 @@ const searchedSel = computed(() => {
   const q = selQ.value.toLowerCase()
   return itemStore.items.filter((i) => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
 })
-const bagItems = (bagId) => itemStore.items.filter((i) => i.bagId === bagId)
-const roomItems = (roomId) => itemStore.items.filter((i) => i.roomId === roomId)
+const bagItems = (bagId) => itemStore.items.filter((i) => i.locationNodeId === bagId)
+const roomItems = (roomId) => itemStore.items.filter((i) => i.locationNodeId === roomId)
 
 async function submit() {
   if (!form.title.trim()) return
@@ -592,7 +603,7 @@ async function submit() {
                 : 'color:var(--color-text-tertiary)'
             "
           >
-            🎒 包包
+            🎒 移动容器
           </button>
           <button
             @click="selTab = 'room'"
@@ -603,7 +614,7 @@ async function submit() {
                 : 'color:var(--color-text-tertiary)'
             "
           >
-            🚪 房间
+            🏠 固定空间
           </button>
           <button
             @click="selTab = 'search'"
@@ -620,7 +631,7 @@ async function submit() {
 
         <div class="flex-1 overflow-y-auto px-4 py-2">
           <div v-if="selTab === 'bag'">
-            <div v-for="bag in bagStore.bags" :key="bag.id" class="mb-3">
+            <div v-for="bag in mobileContainers" :key="bag.id" class="mb-3">
               <div class="flex items-center justify-between py-2">
                 <span class="text-sm font-semibold">{{ bag.icon || "🎒" }} {{ bag.name }}</span>
                 <button
@@ -659,7 +670,7 @@ async function submit() {
           </div>
 
           <div v-if="selTab === 'room'">
-            <div v-for="room in roomStore.rooms" :key="room.id" class="mb-3">
+            <div v-for="room in fixedLocations" :key="room.id" class="mb-3">
               <div class="text-sm font-semibold py-2">{{ room.icon || "🚪" }} {{ room.name }}</div>
               <div
                 v-for="item in roomItems(room.id)"
