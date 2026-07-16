@@ -17,7 +17,7 @@
 
 - [Beta 1 发布记录](02-single-user-mvp/release-1-beta-1.md)：单人 MVP 与 iPhone 测试范围。
 - [Xcode 安装到 iPhone](02-single-user-mvp/ios-xcode-install-guide.md)：Mac、签名、同步和真机安装步骤。
-- [Windows 迁移到 Mac](02-single-user-mvp/windows-to-mac-handoff.md)：工程打包、排除目录和迁移后的验证步骤。
+- [Windows 迁移到 Mac](02-single-user-mvp/windows-to-mac-handoff.md)：GitHub 下载、Mac 环境、Xcode 真机安装和数据迁移。
 
 ## 03 — 物品模块 v3
 
@@ -31,6 +31,8 @@
 ## 90 — 工程参考
 
 - [数据字典](90-engineering/data-dictionary.md)：单人 MVP 的数据实体、字段和关系。
+- [Codex Windows / Mac 双端协同规范](90-engineering/codex-windows-mac-collaboration.md)：双端职责、接手顺序、切换流程与冲突边界。
+- [Git 与 GitHub 使用指南](90-engineering/git-guide-for-owner.md)：面向项目负责人的本地/远端、提交、同步、分支和回滚说明。
 
 ## 使用规则
 

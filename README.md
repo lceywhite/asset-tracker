@@ -40,6 +40,8 @@ Windows PowerShell 若限制执行 `npm.ps1`，可将 `npm` 改为 `npm.cmd`。
 - [产品迭代日志（非技术版）](docs/00-planning/product-changelog.md)
 - [Xcode 安装到 iPhone 指南](docs/02-single-user-mvp/ios-xcode-install-guide.md)
 - [Windows 迁移到 Mac 指南](docs/02-single-user-mvp/windows-to-mac-handoff.md)
+- [Codex Windows / Mac 双端协同规范](docs/90-engineering/codex-windows-mac-collaboration.md)
+- [Git 与 GitHub 使用指南](docs/90-engineering/git-guide-for-owner.md)
 - [数据字典](docs/90-engineering/data-dictionary.md)
 - [Release 0 记录](docs/01-release-0/release-0.md)
 - [单人 MVP Beta 1 记录](docs/02-single-user-mvp/release-1-beta-1.md)
