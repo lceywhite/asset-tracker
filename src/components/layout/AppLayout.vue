@@ -2,12 +2,10 @@
 import { computed, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import ItemEditSheet from "@/components/item/ItemEditSheet.vue"
-import TripForm from "@/components/trip/TripForm.vue"
 
 const route = useRoute()
 const router = useRouter()
 const showCreate = ref(false)
-const showTripCreate = ref(false)
 const showQuickMenu = ref(false)
 const tabs = [
   { key: "items", path: "/items", label: "物品", icon: "◫" },
@@ -21,13 +19,10 @@ const currentTab = computed(() => {
   if (route.path.startsWith("/me") || route.path.startsWith("/user") || route.path.startsWith("/settings")) return "me"
   return "items"
 })
+const showTabBar = computed(() => !route.meta.hideTabBar)
 function onCreated(item) {
   showCreate.value = false
   router.push(`/item/${item.id}`)
-}
-function onTripCreated(trip) {
-  showTripCreate.value = false
-  router.push(`/plans/${trip.id}`)
 }
 function openItemCreate() {
   showQuickMenu.value = false
@@ -35,7 +30,7 @@ function openItemCreate() {
 }
 function openTripCreate() {
   showQuickMenu.value = false
-  showTripCreate.value = true
+  router.push("/plans/new")
 }
 </script>
 
@@ -43,6 +38,7 @@ function openTripCreate() {
   <div class="app-shell flex flex-col h-[100dvh]" style="background: var(--color-bg)">
     <main class="flex-1 min-h-0 overflow-hidden"><router-view /></main>
     <nav
+      v-if="showTabBar"
       aria-label="主导航"
       class="grid grid-cols-5 bg-white/95 backdrop-blur border-t"
       style="border-color: var(--color-border); padding-bottom: env(safe-area-inset-bottom); min-height: 60px"
@@ -92,8 +88,6 @@ function openTripCreate() {
     </nav>
 
     <ItemEditSheet :show="showCreate" @close="showCreate = false" @created="onCreated" />
-    <TripForm :show="showTripCreate" @close="showTripCreate = false" @created="onTripCreated" />
-
     <div v-if="showQuickMenu" class="fixed inset-0 z-40 flex items-end bg-black/30" @click.self="showQuickMenu = false">
       <section class="w-full bg-white rounded-t-3xl px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
         <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5"></div>

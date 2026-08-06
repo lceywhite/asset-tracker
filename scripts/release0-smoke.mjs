@@ -91,9 +91,11 @@ try {
     database.close()
     return result
   })
-  assert.equal(schema.version, 6)
+  assert.equal(schema.version, 7)
   assert.ok(schema.sessionIndexes.includes("planId"))
+  assert.ok(schema.sessionIndexes.includes("kind"))
   assert.equal(schema.migrated.kind, "plan")
+  assert.equal(schema.migrated.modelVersion, 2)
   assert.equal("checked" in schema.migrated.packingItems[0], false)
   const v3Model = await page.evaluate(async () => {
     const request = indexedDB.open("asset-tracker-db")
@@ -177,14 +179,27 @@ try {
 
   await page.getByRole("button", { name: "快捷添加" }).click()
   await page.getByRole("button", { name: /新建行程/ }).click()
-  await page.getByPlaceholder("标题 *").fill("MVP 测试行程")
-  await page.getByText(/选择物品/).click()
-  await page.getByRole("button", { name: "全选", exact: true }).click()
-  await page.getByRole("button", { name: /加入清单（1）/ }).click()
-  await page.getByRole("button", { name: "创建", exact: true }).click()
-  await page.waitForURL("**/#/plans/**")
-  await page.getByRole("button", { name: /出发核对/ }).click()
+  await page.getByLabel("行程名称").fill("MVP 测试行程")
+  await page.getByLabel("出发地点").fill("测试房间")
+  await page.getByLabel("到达地点").fill("测试终点")
+  await page.getByRole("button", { name: /添加物品添加移动容器/ }).click()
+  await page.waitForURL("**/#/plans/*/carry**")
+  await page.getByRole("button", { name: /添加移动容器/ }).click()
+  await page.getByLabel("选择现有移动容器").selectOption("bag-fixture")
+  await page.getByRole("button", { name: "创建并加入", exact: true }).click()
+  await page.getByRole("button", { name: "＋ 从物品库添加", exact: true }).click()
+  await page.waitForURL("**/#/plans/*/carry/*/items**")
+  await page.getByRole("button", { name: "＋MVP 测试护照", exact: true }).click()
+  await page.getByRole("button", { name: "给MVP 测试护照加星标", exact: true }).click()
+  await page.getByRole("button", { name: "添加 1 项到测试背包", exact: true }).click()
+  await page.waitForURL("**/#/plans/*/carry**")
+  await page.getByRole("button", { name: "完成", exact: true }).click()
+  await page.waitForURL("**/#/plans/*/edit")
+  await page.getByRole("button", { name: "保存行程档案", exact: true }).click()
+  await page.waitForURL(/#\/plans\/[^/]+$/)
+  await page.getByRole("button", { name: "出发核对", exact: true }).click()
   await page.getByRole("button", { name: "已确认" }).click()
+  await page.getByRole("button", { name: "返回行程档案", exact: true }).click()
   await page.reload({ waitUntil: "networkidle" })
   await page.getByText("MVP 测试行程", { exact: true }).first().waitFor()
 
@@ -202,8 +217,17 @@ try {
     return { plan: plans.find((entry) => entry.title === "MVP 测试行程"), sessions }
   })
   assert.equal(persisted.plan.packingItems.length, 1)
+  assert.equal(persisted.plan.modelVersion, 2)
+  assert.equal(persisted.plan.packingItems[0].containerId, "bag-fixture")
+  assert.equal(persisted.plan.packingItems[0].starred, true)
   assert.equal("checked" in persisted.plan.packingItems[0], false)
   assert.equal(persisted.sessions.filter((session) => session.planId === persisted.plan.id).length, 1)
+  assert.equal(
+    persisted.sessions.find((session) => session.planId === persisted.plan.id).results[
+      persisted.plan.packingItems[0].id
+    ].state,
+    "confirmed",
+  )
 
   await page.getByText("社区", { exact: true }).click()
   await page.getByText("社区入口已预留", { exact: true }).waitFor()
@@ -229,7 +253,7 @@ try {
     runtimeErrors.filter((message) => !message.includes("net::ERR_FAILED")),
     [],
   )
-  console.log("Single-user MVP smoke passed: DB v4→v6, item v3, plan check session, four tabs, backup v3")
+  console.log("Single-user MVP smoke passed: DB v4→v7, item v3, trip v2, four tabs, backup v3")
 } finally {
   await browser.close()
 }

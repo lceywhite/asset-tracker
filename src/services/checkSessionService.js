@@ -71,4 +71,22 @@ export async function complete(sessionId) {
   return updated
 }
 
+export async function reopenUnresolved(sessionId) {
+  const session = await db.get(STORE, sessionId)
+  if (!session) throw new Error("核对记录不存在")
+  const now = new Date().toISOString()
+  const results = Object.fromEntries(
+    Object.entries(session.results || {}).map(([entryId, result]) => [
+      entryId,
+      result.state === CHECK_STATES.CONFIRMED ? result : { state: CHECK_STATES.PENDING, checked: false, checkedAt: "" },
+    ]),
+  )
+  const updated = normalizeCheckSession(
+    { ...session, results, status: "in_progress", completedAt: "", updatedAt: now },
+    { now },
+  )
+  await db.put(STORE, updated)
+  return updated
+}
+
 export { getCheckSummary }

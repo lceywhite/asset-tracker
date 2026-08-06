@@ -114,6 +114,10 @@ test("upgrades v6 trips and check sessions to v2 and keeps backup preferences", 
   assert.equal(missing.results[created.packingItems[0].id].state, "missing")
   const completed = await sessionService.complete(session.id)
   assert.equal(completed.status, "completed")
+  const reopened = await sessionService.reopenUnresolved(session.id)
+  assert.equal(reopened.status, "in_progress")
+  assert.equal(reopened.results[created.packingItems[0].id].state, "pending")
+  assert.equal(reopened.completedAt, "")
 
   localStorage.setItem(
     "asset-tracker-trip-preferences",
