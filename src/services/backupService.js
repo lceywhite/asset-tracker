@@ -1,8 +1,9 @@
 import * as db from "./db.js"
 
 export const BACKUP_FORMAT = "asset-tracker-backup"
-export const BACKUP_VERSION = 2
-const SUPPORTED_BACKUP_VERSIONS = [1, BACKUP_VERSION]
+export const BACKUP_VERSION = 3
+const SUPPORTED_BACKUP_VERSIONS = [1, 2, BACKUP_VERSION]
+const V3_STORES = new Set(["homeSections", "spaceNodes", "spaceLayouts"])
 export const BUSINESS_STORAGE_KEYS = [
   "asset-guard-user",
   "asset-guard-spaces",
@@ -11,6 +12,7 @@ export const BUSINESS_STORAGE_KEYS = [
   "asset-tracker-categories",
   "asset-guard-custom-types",
   "asset-tracker-item-view",
+  "asset-tracker-item-preferences",
 ]
 
 function isRecord(value) {
@@ -28,8 +30,11 @@ export function validateBackup(payload) {
   if (!isRecord(payload.data?.stores)) errors.push("缺少 IndexedDB 数据")
   if (!isRecord(payload.data?.localStorage)) errors.push("缺少本地配置数据")
 
-  const requiredStores =
-    payload.version === 1 ? db.STORE_NAMES.filter((name) => name !== "checkSessions") : db.STORE_NAMES
+  const requiredStores = db.STORE_NAMES.filter((name) => {
+    if (payload.version === 1) return name !== "checkSessions" && !V3_STORES.has(name)
+    if (payload.version === 2) return !V3_STORES.has(name)
+    return true
+  })
   for (const name of requiredStores) {
     if (!Array.isArray(payload.data?.stores?.[name])) errors.push(`数据表 ${name} 缺失或格式错误`)
   }
@@ -83,6 +88,7 @@ export async function restoreBackup(payload, { mode = "replace" } = {}) {
         for (const value of payload.data.stores[name] || []) store.put(value)
       }
     })
+    await db.ensureV3Defaults()
 
     if (mode === "replace") BUSINESS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key))
     Object.entries(payload.data.localStorage).forEach(([key, value]) => {

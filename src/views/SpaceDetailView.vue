@@ -1,282 +1,448 @@
-﻿<script setup>
-import { ref, computed, onMounted } from "vue"
+<script setup>
+import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { useSpaceStore } from "@/stores/useSpaceStore"
-import { useUserStore } from "@/stores/useUserStore"
-import * as bagSvc from "@/services/bagService"
-import * as roomSvc from "@/services/roomService"
-import * as itemSvc from "@/services/itemService"
+import { useItemStore } from "@/stores/useItemStore"
+import * as nodeService from "@/services/spaceNodeService"
+import * as layoutService from "@/services/spaceLayoutService"
+import * as sectionService from "@/services/homeSectionService"
+import * as itemService from "@/services/itemService"
+import * as checkService from "@/services/spaceCheckService"
+import { getEffectiveValuation } from "@/domain/itemModel"
+import SpaceNodeEditorSheet from "@/components/space/SpaceNodeEditorSheet.vue"
+import ItemEditSheet from "@/components/item/ItemEditSheet.vue"
+
 const route = useRoute()
 const router = useRouter()
-const spaceStore = useSpaceStore()
-const userStore = useUserStore()
-const showConfirm = ref(false)
-const showMembers = ref(false)
-const copied = ref(false)
-const spaceBags = ref([])
-const spaceRooms = ref([])
-const spaceDirectItems = ref([])
-const allItems = ref([])
-const loadingAssets = ref(true)
+const itemStore = useItemStore()
+const node = ref(null)
+const allNodes = ref([])
+const sections = ref([])
+const layouts = ref([])
+const activeLayoutIndex = ref(0)
+const layoutEditing = ref(false)
+const showNodeEditor = ref(false)
+const showChildEditor = ref(false)
+const showAddChoice = ref(false)
+const showItemEditor = ref(false)
+const selectedExisting = ref([])
+const draggedId = ref("")
+const checkSession = ref(null)
 
-onMounted(async () => {
-  try {
-    const [allBags, allRooms, items] = await Promise.all([bagSvc.getAll(), roomSvc.getAll(), itemSvc.getAllItems()])
-    allItems.value = items
-    spaceBags.value = allBags.filter((b) => b.spaceId === route.params.id)
-    spaceRooms.value = allRooms.filter((r) => r.spaceId === route.params.id)
-    spaceDirectItems.value = items.filter((i) => i.spaceId === route.params.id && !i.bagId && !i.roomId)
-  } catch (e) {
-    console.error(e)
+async function load() {
+  ;[allNodes.value, layouts.value, sections.value] = await Promise.all([
+    nodeService.getAllNodes(),
+    layoutService.getLayoutsByNode(route.params.id),
+    sectionService.getAllSections(),
+  ])
+  node.value = allNodes.value.find((candidate) => candidate.id === route.params.id) || null
+  await itemStore.loadItems()
+  if (activeLayoutIndex.value >= layouts.value.length) activeLayoutIndex.value = Math.max(layouts.value.length - 1, 0)
+}
+
+onMounted(load)
+watch(() => route.params.id, load)
+
+const children = computed(() =>
+  allNodes.value.filter((candidate) => candidate.parentId === node.value?.id).sort((a, b) => a.sortOrder - b.sortOrder),
+)
+const directItems = computed(() => itemStore.items.filter((item) => item.locationNodeId === node.value?.id))
+
+function descendantIds(rootId) {
+  const result = []
+  const queue = [rootId]
+  while (queue.length) {
+    const parentId = queue.shift()
+    for (const child of allNodes.value.filter((candidate) => candidate.parentId === parentId)) {
+      result.push(child.id)
+      queue.push(child.id)
+    }
   }
-  loadingAssets.value = false
+  return result
+}
+
+const recursiveItems = computed(() => {
+  const ids = new Set([node.value?.id, ...descendantIds(node.value?.id)])
+  return itemStore.items.filter((item) => ids.has(item.locationNodeId))
+})
+const collectionValue = computed(() =>
+  recursiveItems.value.reduce((sum, item) => sum + (getEffectiveValuation(item) || 0), 0),
+)
+const suggestedChild = computed(() => nodeService.getSuggestedChildKind(node.value))
+const activeLayout = computed(() => layouts.value[activeLayoutIndex.value] || null)
+const orderedChildren = computed(() => {
+  const order = activeLayout.value?.placements?.map((placement) => placement.nodeId) || []
+  return [...children.value].sort((a, b) => {
+    const ai = order.indexOf(a.id)
+    const bi = order.indexOf(b.id)
+    if (ai < 0 && bi < 0) return a.sortOrder - b.sortOrder
+    if (ai < 0) return 1
+    if (bi < 0) return -1
+    return ai - bi
+  })
+})
+const availableItems = computed(() => itemStore.items.filter((item) => item.locationNodeId !== node.value?.id))
+const checkProgress = computed(() => {
+  const entries = checkSession.value?.entries || []
+  return { checked: entries.filter((entry) => entry.checked).length, total: entries.length }
+})
+const currentPath = computed(() => {
+  if (!node.value) return ""
+  const names = []
+  const visited = new Set()
+  let current = node.value
+  while (current && !visited.has(current.id)) {
+    names.unshift(current.name)
+    visited.add(current.id)
+    current = allNodes.value.find((candidate) => candidate.id === current.parentId)
+  }
+  const section = sections.value.find((candidate) => candidate.id === node.value.sectionId)
+  if (section && names[0] !== section.name) names.unshift(section.name)
+  return names.join(" / ")
 })
 
-function bagItemCount(bagId) {
-  return allItems.value.filter((i) => i.bagId === bagId).length
+function formatMoney(value) {
+  if (!Number.isFinite(Number(value)) || Number(value) <= 0) return "—"
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: node.value?.currency || "CNY",
+    maximumFractionDigits: 0,
+  }).format(Number(value))
 }
-function roomItemCount(roomId) {
-  return allItems.value.filter((i) => i.roomId === roomId).length
-}
-const space = computed(() => spaceStore.get(route.params.id))
-const isOwner = computed(() => space.value?.members.some((m) => m.userId === userStore.user.id && m.role === "owner"))
-const myRole = computed(() => space.value?.members.find((m) => m.userId === userStore.user.id)?.role || "")
 
-async function copyCode() {
-  try {
-    await navigator.clipboard.writeText(space.value?.inviteCode || "")
-    copied.value = true
-    setTimeout(() => (copied.value = false), 2000)
-  } catch {
-    alert(space.value?.inviteCode)
-  }
+function cover(item) {
+  return item.images?.find((image) => image.isCover)?.url || item.photo || ""
 }
-function leaveSpace() {
-  spaceStore.removeMember(space.value.id, userStore.user.id)
-  router.push("/user")
+
+async function ensureLayout() {
+  if (activeLayout.value) return activeLayout.value
+  const created = await layoutService.createLayout(node.value.id, {
+    name: "默认布局",
+    placements: children.value.map((child, index) => ({ nodeId: child.id, x: index % 2, y: Math.floor(index / 2) })),
+  })
+  await load()
+  activeLayoutIndex.value = layouts.value.findIndex((layout) => layout.id === created.id)
+  return created
 }
-function deleteSpace() {
-  spaceStore.remove(space.value.id)
-  router.push("/user")
+
+async function toggleLayoutEdit() {
+  if (!layoutEditing.value) await ensureLayout()
+  layoutEditing.value = !layoutEditing.value
+}
+
+async function addLayout() {
+  const layout = await layoutService.createLayout(node.value.id, { name: `布局 ${layouts.value.length + 1}` })
+  await load()
+  activeLayoutIndex.value = layouts.value.findIndex((candidate) => candidate.id === layout.id)
+  layoutEditing.value = true
+}
+
+function nextLayout() {
+  if (layouts.value.length < 2) return
+  activeLayoutIndex.value = (activeLayoutIndex.value + 1) % layouts.value.length
+}
+
+async function reorderChild(targetId) {
+  if (!layoutEditing.value || !draggedId.value || draggedId.value === targetId) return
+  const list = orderedChildren.value.map((child) => child.id)
+  const from = list.indexOf(draggedId.value)
+  const to = list.indexOf(targetId)
+  const [entry] = list.splice(from, 1)
+  list.splice(to, 0, entry)
+  await saveOrder(list)
+  draggedId.value = ""
+}
+
+async function shiftChild(id, delta) {
+  const list = orderedChildren.value.map((child) => child.id)
+  const index = list.indexOf(id)
+  const target = index + delta
+  if (target < 0 || target >= list.length) return
+  ;[list[index], list[target]] = [list[target], list[index]]
+  await saveOrder(list)
+}
+
+async function saveOrder(ids) {
+  const layout = await ensureLayout()
+  await layoutService.updateLayout(layout.id, {
+    placements: ids.map((nodeId, index) => ({ nodeId, x: index % 2, y: Math.floor(index / 2), width: 1, height: 1 })),
+  })
+  await load()
+}
+
+function toggleExisting(id) {
+  selectedExisting.value = selectedExisting.value.includes(id)
+    ? selectedExisting.value.filter((candidate) => candidate !== id)
+    : [...selectedExisting.value, id]
+}
+
+async function moveExisting() {
+  for (const id of selectedExisting.value)
+    await itemService.moveItem(id, node.value.id, { reason: `移入${node.value.name}` })
+  selectedExisting.value = []
+  showAddChoice.value = false
+  await load()
+}
+
+async function startCheck() {
+  checkSession.value = await checkService.startOrResumeSpaceCheck(node.value.id, recursiveItems.value)
+}
+
+async function toggleCheck(itemId) {
+  checkSession.value = await checkService.toggleSpaceCheck(checkSession.value.id, itemId)
+}
+
+async function completeCheck() {
+  await checkService.completeSpaceCheck(checkSession.value.id)
+  checkSession.value = null
+}
+
+async function onNodeSaved() {
+  showNodeEditor.value = false
+  await load()
+}
+
+async function onChildSaved() {
+  showChildEditor.value = false
+  await load()
+}
+
+async function onItemCreated() {
+  showItemEditor.value = false
+  await load()
+}
+
+function openNewItem() {
+  showAddChoice.value = false
+  showItemEditor.value = true
 }
 </script>
+
 <template>
-  <div class="flex flex-col h-full" style="background: var(--color-bg)">
-    <div class="flex items-center gap-2 px-4 py-3 bg-white border-b" style="border-color: var(--color-border)">
-      <button
-        @click="router.back()"
-        class="text-lg w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100"
-      >
-        &larr;
-      </button>
-      <div class="flex-1 text-base font-bold truncate" style="color: var(--color-text-primary)">
-        {{ space?.icon || "🏠" }} {{ space?.name || "空间" }}
+  <div class="flex h-full flex-col bg-[#f6f5f1]">
+    <header class="flex items-center gap-3 border-b bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
+      <button class="flex h-8 w-8 items-center justify-center text-xl text-gray-500" @click="router.back()">‹</button>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[10px] text-gray-400" :title="currentPath">{{ currentPath }}</p>
+        <h1 class="truncate text-sm font-bold">{{ node?.name || "空间" }}</h1>
       </div>
-    </div>
-    <div class="flex-1 overflow-y-auto px-4 pb-4" v-if="space">
-      <!-- Invite Code -->
-      <div class="mt-4 bg-white rounded-xl p-4" style="border: 1px solid var(--color-border-light)">
-        <div class="text-xs font-medium mb-2" style="color: var(--color-text-secondary)">邀请码</div>
+      <button class="text-lg text-gray-400" @click="showNodeEditor = true">•••</button>
+    </header>
+
+    <main v-if="node" class="flex-1 overflow-y-auto pb-8">
+      <section class="border-b bg-white p-4">
         <div class="flex items-center gap-3">
-          <div
-            class="flex-1 bg-gray-50 rounded-lg px-4 py-3 text-center text-lg font-bold tracking-[0.3em]"
-            style="color: var(--brand-primary); font-family: monospace"
+          <span class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 text-3xl"
+            ><img v-if="node.images?.[0]" :src="node.images[0].url" class="h-full w-full object-cover" /><template
+              v-else
+              >{{ node.icon }}</template
+            ></span
           >
-            {{ space.inviteCode }}
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate text-xl font-bold">{{ node.name }}</h2>
+            <p class="mt-1 text-xs text-gray-400">
+              {{ children.length }} 个{{ suggestedChild.label }} · {{ recursiveItems.length }} 件物品
+            </p>
           </div>
-          <button
-            @click="copyCode"
-            class="px-4 py-3 rounded-lg text-sm font-medium text-white whitespace-nowrap"
-            :style="copied ? 'background:var(--state-success)' : 'background:var(--brand-primary)'"
-          >
-            {{ copied ? "已复制" : "复制" }}
+          <div v-if="collectionValue" class="text-right">
+            <strong class="block text-sm">{{ formatMoney(collectionValue) }}</strong
+            ><small class="text-[9px] text-gray-400">藏品价值</small>
+          </div>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button class="rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white" @click="showChildEditor = true">
+            ＋ 添加{{ suggestedChild.label }}</button
+          ><button class="rounded-xl border py-3 text-sm font-semibold text-blue-600" @click="showAddChoice = true">
+            ＋ 添加物品
           </button>
         </div>
-      </div>
+      </section>
 
-      <!-- Shared Assets -->
-      <div class="mt-4">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-sm font-semibold" style="color: var(--color-text-primary)">共享资产</h3>
+      <section class="m-4 rounded-2xl border bg-white p-4">
+        <div class="flex items-center">
+          <button class="flex min-w-0 flex-1 items-center gap-1 text-left" @click="nextLayout">
+            <h2 class="font-bold">布局</h2>
+            <span v-if="layouts.length > 1" class="text-gray-300">›</span
+            ><small v-if="activeLayout" class="ml-2 truncate text-[10px] text-gray-400">{{
+              activeLayout.name
+            }}</small></button
+          ><button v-if="layoutEditing" class="mr-3 text-xl text-blue-600" @click="addLayout">＋</button
+          ><button class="text-xs font-semibold text-blue-600" @click="toggleLayoutEdit">
+            {{ layoutEditing ? "完成" : "编辑" }}
+          </button>
         </div>
-        <div v-if="loadingAssets" class="text-center py-4 text-xs" style="color: var(--color-text-tertiary)">
-          加载中...
+        <div v-if="orderedChildren.length" class="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-gray-50 p-2">
+          <button
+            v-for="child in orderedChildren"
+            :key="child.id"
+            :draggable="layoutEditing"
+            class="relative min-h-[92px] rounded-xl border bg-white p-3 text-left"
+            :class="layoutEditing && 'border-dashed border-blue-300'"
+            @dragstart="draggedId = child.id"
+            @dragover.prevent
+            @drop="reorderChild(child.id)"
+            @click="!layoutEditing && router.push(`/spaces/${child.id}`)"
+          >
+            <span class="text-2xl">{{ child.icon }}</span
+            ><strong class="mt-2 block truncate text-xs">{{ child.name }}</strong
+            ><small class="text-[9px] text-gray-400"
+              >{{ allNodes.filter((candidate) => candidate.parentId === child.id).length }} 个下级 ·
+              {{ itemStore.items.filter((item) => item.locationNodeId === child.id).length }} 件直属物品</small
+            ><span v-if="layoutEditing" class="absolute right-2 top-2 flex gap-1"
+              ><i class="cursor-grab text-gray-300 not-italic">☰</i
+              ><i class="text-blue-400 not-italic" @click.stop="shiftChild(child.id, -1)">←</i
+              ><i class="text-blue-400 not-italic" @click.stop="shiftChild(child.id, 1)">→</i></span
+            >
+          </button>
         </div>
-        <div v-else class="space-y-3">
-          <!-- Shared Bags -->
-          <div
-            v-if="spaceBags.length"
-            class="bg-white rounded-xl overflow-hidden"
-            style="border: 1px solid var(--color-border-light)"
-          >
-            <div
-              class="px-3 py-2 text-xs font-semibold"
-              style="color: var(--color-text-secondary); border-bottom: 1px solid var(--color-divider)"
-            >
-              共用的包包 ({{ spaceBags.length }})
-            </div>
-            <div
-              v-for="bag in spaceBags"
-              :key="bag.id"
-              @click="router.push('/bag/' + bag.id)"
-              class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
-              style="border-bottom: 1px solid var(--color-divider)"
-            >
-              <span class="text-lg">{{ bag.icon || "🎒" }}</span>
-              <span class="flex-1 text-sm font-medium truncate" style="color: var(--color-text-primary)">{{
-                bag.name
-              }}</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">{{ bagItemCount(bag.id) }} 件</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">&gt;</span>
-            </div>
-          </div>
-          <!-- Shared Rooms -->
-          <div
-            v-if="spaceRooms.length"
-            class="bg-white rounded-xl overflow-hidden"
-            style="border: 1px solid var(--color-border-light)"
-          >
-            <div
-              class="px-3 py-2 text-xs font-semibold"
-              style="color: var(--color-text-secondary); border-bottom: 1px solid var(--color-divider)"
-            >
-              共用的房间 ({{ spaceRooms.length }})
-            </div>
-            <div
-              v-for="room in spaceRooms"
-              :key="room.id"
-              @click="router.push('/room/' + room.id)"
-              class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
-              style="border-bottom: 1px solid var(--color-divider)"
-            >
-              <span class="text-lg">{{ room.icon || "🚪" }}</span>
-              <span class="flex-1 text-sm font-medium truncate" style="color: var(--color-text-primary)">{{
-                room.name
-              }}</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">{{ roomItemCount(room.id) }} 件</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">&gt;</span>
-            </div>
-          </div>
-          <!-- Direct Items -->
-          <div
-            v-if="spaceDirectItems.length"
-            class="bg-white rounded-xl overflow-hidden"
-            style="border: 1px solid var(--color-border-light)"
-          >
-            <div
-              class="px-3 py-2 text-xs font-semibold"
-              style="color: var(--color-text-secondary); border-bottom: 1px solid var(--color-divider)"
-            >
-              独立物品 ({{ spaceDirectItems.length }})
-            </div>
-            <div
-              v-for="item in spaceDirectItems"
-              :key="item.id"
-              @click="router.push('/item/' + item.id)"
-              class="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
-              style="border-bottom: 1px solid var(--color-divider)"
-            >
-              <span class="text-base">📦</span>
-              <span class="flex-1 text-sm font-medium truncate" style="color: var(--color-text-primary)">{{
-                item.name
-              }}</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">{{ item.category || "" }}</span>
-              <span class="text-xs" style="color: var(--color-text-tertiary)">&gt;</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Members -->
-      <div class="mt-4 bg-white rounded-xl" style="border: 1px solid var(--color-border-light)">
-        <div class="flex items-center justify-between px-4 py-3 border-b" style="border-color: var(--color-divider)">
-          <span class="text-sm font-semibold" style="color: var(--color-text-primary)"
-            >成员（{{ space.members.length }}）</span
-          >
-        </div>
-        <div
-          v-for="m in space.members"
-          :key="m.userId"
-          class="flex items-center gap-3 px-4 py-3"
-          style="border-bottom: 1px solid var(--color-divider)"
-        >
-          <span class="text-xl">{{ m.icon || "😊" }}</span>
-          <div class="flex-1">
-            <div class="text-sm font-medium" style="color: var(--color-text-primary)">
-              {{ m.name
-              }}<span
-                v-if="m.userId === userStore.user.id"
-                class="text-xs ml-1"
-                style="color: var(--color-text-tertiary)"
-                >（我）</span
-              >
-            </div>
-          </div>
-          <span
-            class="text-xs px-2 py-0.5 rounded-full"
-            :style="
-              m.role === 'owner'
-                ? 'background:var(--brand-primary-light);color:var(--brand-primary)'
-                : 'background:var(--color-bg);color:var(--color-text-secondary)'
-            "
-            >{{ m.role === "owner" ? "所有者" : "编辑者" }}</span
-          >
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="mt-6 space-y-2">
-        <button
-          v-if="isOwner"
-          @click="showConfirm = 'delete'"
-          class="w-full py-3 rounded-xl text-sm font-medium"
-          style="background: var(--state-error-bg); color: var(--state-error)"
-        >
-          删除空间
-        </button>
-        <button
-          v-else
-          @click="showConfirm = 'leave'"
-          class="w-full py-3 rounded-xl text-sm font-medium"
-          style="border: 1px solid var(--color-border); color: var(--color-text-secondary)"
-        >
-          退出空间
-        </button>
-      </div>
-    </div>
-    <div v-else class="flex-1 flex items-center justify-center text-sm" style="color: var(--color-text-tertiary)">
-      空间不存在
-    </div>
-
-    <!-- Confirm Dialog -->
-    <div
-      v-if="showConfirm"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-      @click.self="showConfirm = ''"
-    >
-      <div class="bg-white rounded-xl p-5 mx-4 max-w-xs w-full">
-        <h3 class="text-sm font-bold mb-2" style="color: var(--color-text-primary)">
-          {{ showConfirm === "delete" ? "删除空间" : "退出空间" }}
-        </h3>
-        <p class="text-xs mb-4" style="color: var(--color-text-secondary)">
-          {{ showConfirm === "delete" ? "删除后不可恢复。" : "确定要退出此空间吗？" }}
+        <p v-else class="mt-3 rounded-xl bg-gray-50 py-8 text-center text-xs text-gray-400">
+          当前没有下级{{ suggestedChild.label }}
         </p>
-        <div class="flex gap-3">
-          <button
-            @click="showConfirm = ''"
-            class="flex-1 py-2 border rounded-lg text-xs font-medium"
-            style="border-color: var(--color-border); color: var(--color-text-secondary)"
-          >
-            取消
-          </button>
-          <button
-            @click="showConfirm === 'delete' ? deleteSpace() : leaveSpace()"
-            class="flex-1 py-2 rounded-lg text-xs font-medium text-white"
-            :style="showConfirm === 'delete' ? 'background:var(--state-error)' : 'background:var(--brand-primary)'"
-          >
-            {{ showConfirm === "delete" ? "删除" : "退出" }}
+      </section>
+
+      <section class="mx-4 rounded-2xl border bg-white">
+        <div class="flex items-center justify-between border-b p-4">
+          <div>
+            <h2 class="font-bold">物品清单</h2>
+            <p class="mt-1 text-[10px] text-gray-400">直属于当前空间的物品</p>
+          </div>
+          <button class="rounded-lg border px-3 py-1.5 text-xs font-semibold text-blue-600" @click="startCheck">
+            核对
           </button>
         </div>
-      </div>
+        <button
+          v-for="item in directItems"
+          :key="item.id"
+          class="flex w-full items-center gap-3 border-b p-3 text-left last:border-0"
+          @click="router.push(`/item/${item.id}`)"
+        >
+          <span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-gray-50"
+            ><img v-if="cover(item)" :src="cover(item)" class="h-full w-full object-cover" /><template v-else
+              >📦</template
+            ></span
+          ><span class="min-w-0 flex-1"
+            ><strong class="block truncate text-sm">{{ item.name }}</strong
+            ><small class="text-[10px] text-gray-400">{{ item.category }} · 直属当前空间</small></span
+          ><span class="text-right"
+            ><strong v-if="getEffectiveValuation(item)" class="block text-xs">{{
+              formatMoney(getEffectiveValuation(item))
+            }}</strong
+            ><small class="text-[9px] text-gray-400">估值</small></span
+          >
+        </button>
+        <p v-if="!directItems.length" class="py-8 text-center text-xs text-gray-400">当前空间没有直属物品</p>
+      </section>
+    </main>
+    <div v-else class="flex flex-1 items-center justify-center text-sm text-gray-400">空间不存在</div>
+
+    <SpaceNodeEditorSheet
+      :show="showNodeEditor"
+      :node="node"
+      :section-id="node?.sectionId || ''"
+      @close="showNodeEditor = false"
+      @saved="onNodeSaved"
+      @deleted="router.replace('/items')"
+    />
+    <SpaceNodeEditorSheet
+      :show="showChildEditor"
+      :section-id="node?.sectionId || ''"
+      :parent="node"
+      :suggested-kind="suggestedChild.kind"
+      @close="showChildEditor = false"
+      @saved="onChildSaved"
+    />
+    <ItemEditSheet
+      :show="showItemEditor"
+      :preset-location-node-id="node?.id || ''"
+      @close="showItemEditor = false"
+      @created="onItemCreated"
+    />
+
+    <div v-if="showAddChoice" class="fixed inset-0 z-50 flex items-end bg-black/35" @click.self="showAddChoice = false">
+      <section
+        class="flex max-h-[82dvh] w-full flex-col rounded-t-3xl bg-white pb-[max(20px,env(safe-area-inset-bottom))]"
+      >
+        <div class="mx-auto my-3 h-1 w-10 rounded-full bg-gray-200"></div>
+        <div class="flex items-center justify-between px-4 pb-3">
+          <h2 class="font-bold">添加物品到 {{ node.name }}</h2>
+          <button class="text-sm text-gray-400" @click="showAddChoice = false">关闭</button>
+        </div>
+        <div class="flex-1 overflow-y-auto border-y px-4">
+          <button
+            v-for="item in availableItems"
+            :key="item.id"
+            class="flex w-full items-center gap-3 border-b py-3 text-left"
+            @click="toggleExisting(item.id)"
+          >
+            <span
+              class="flex h-5 w-5 items-center justify-center rounded border text-xs"
+              :class="selectedExisting.includes(item.id) ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300'"
+              >{{ selectedExisting.includes(item.id) ? "✓" : "" }}</span
+            ><span class="flex-1"
+              ><strong class="block text-sm">{{ item.name }}</strong
+              ><small class="text-[10px] text-gray-400">{{ item.category }}</small></span
+            >
+          </button>
+          <p v-if="!availableItems.length" class="py-8 text-center text-xs text-gray-400">没有可移动的已有物品</p>
+        </div>
+        <div class="p-4">
+          <button
+            class="w-full rounded-xl border-2 border-dashed border-blue-200 py-3 text-sm font-semibold text-blue-600"
+            @click="openNewItem"
+          >
+            ＋ 新建物品并加入</button
+          ><button
+            class="mt-2 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white disabled:bg-gray-200"
+            :disabled="!selectedExisting.length"
+            @click="moveExisting"
+          >
+            移入已选物品（{{ selectedExisting.length }}）
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="checkSession" data-testid="space-check" class="fixed inset-0 z-[70] flex flex-col bg-[#f6f5f1]">
+      <header class="border-b bg-white px-4 pb-3 pt-[max(14px,env(safe-area-inset-top))]">
+        <div class="flex items-center">
+          <button class="text-sm text-gray-500" @click="checkSession = null">关闭</button>
+          <div class="flex-1 text-center">
+            <p class="text-[10px] text-gray-400">{{ node.name }}</p>
+            <h2 class="font-bold">空间核对</h2>
+          </div>
+          <span class="text-xs font-semibold text-blue-600">{{ checkProgress.checked }}/{{ checkProgress.total }}</span>
+        </div>
+        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <i
+            class="block h-full bg-blue-600"
+            :style="{ width: checkProgress.total ? `${(checkProgress.checked / checkProgress.total) * 100}%` : '0%' }"
+          ></i>
+        </div>
+      </header>
+      <main class="flex-1 space-y-2 overflow-y-auto p-4">
+        <button
+          v-for="entry in checkSession.entries"
+          :key="entry.itemId"
+          :aria-label="`核对 ${entry.name}`"
+          class="flex w-full items-center gap-3 rounded-2xl border bg-white p-4 text-left"
+          @click="toggleCheck(entry.itemId)"
+        >
+          <span
+            class="flex h-7 w-7 items-center justify-center rounded-full border-2"
+            :class="entry.checked ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'"
+            >{{ entry.checked ? "✓" : "" }}</span
+          ><span class="flex-1 text-sm font-semibold" :class="entry.checked && 'text-gray-400 line-through'">{{
+            entry.name
+          }}</span>
+        </button>
+        <p v-if="!checkSession.entries.length" class="py-12 text-center text-sm text-gray-400">
+          当前空间没有可核对的物品
+        </p>
+      </main>
+      <footer class="border-t bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+        <button class="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white" @click="completeCheck">
+          完成本次核对
+        </button>
+      </footer>
     </div>
   </div>
 </template>

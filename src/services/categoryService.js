@@ -1,4 +1,4 @@
-const BUILTIN = ["日用", "电子设备", "衣物", "证件", "家具", "书籍", "厨具", "其他"]
+const BUILTIN = ["日用", "电子设备", "衣服", "工具", "箱包", "证件", "家具", "书籍", "厨具", "收藏品", "其他"]
 const KEY = "asset-tracker-categories"
 export function getAll() {
   try {

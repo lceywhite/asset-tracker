@@ -1,621 +1,364 @@
-﻿<script setup>
-import { ref, computed, onMounted } from "vue"
+<script setup>
+import { computed, onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
-import { useBagStore } from "@/stores/useBagStore"
-import { useRoomStore } from "@/stores/useRoomStore"
 import { useItemStore } from "@/stores/useItemStore"
-import { useSectionStore } from "@/stores/useSectionStore"
-import * as bagSvc from "@/services/bagService"
-import * as roomSvc from "@/services/roomService"
-import * as secSvc from "@/services/sectionService"
+import * as sectionService from "@/services/homeSectionService"
+import * as nodeService from "@/services/spaceNodeService"
+import { getEffectiveValuation } from "@/domain/itemModel"
+import { getPreferences, updatePreferences } from "@/services/itemPreferencesService"
+import SpaceNodeEditorSheet from "@/components/space/SpaceNodeEditorSheet.vue"
+import SectionManagerSheet from "@/components/space/SectionManagerSheet.vue"
+
 const router = useRouter()
-const bagStore = useBagStore()
-const roomStore = useRoomStore()
 const itemStore = useItemStore()
-const sectionStore = useSectionStore()
+const sections = ref([])
+const nodes = ref([])
 const searchQuery = ref("")
-const viewMode = ref(localStorage.getItem("asset-tracker-item-view") || "card")
-function toggleViewMode() {
-  viewMode.value = viewMode.value === "card" ? "table" : "card"
-  localStorage.setItem("asset-tracker-item-view", viewMode.value)
-}
-const showCreateBag = ref(false)
-const showCreateRoom = ref(false)
-const showSectionPicker = ref(false)
-const builtinNames = ref({})
-function loadBuiltinNames() {
-  try {
-    return JSON.parse(localStorage.getItem("asset-guard-builtin-names") || "{}")
-  } catch {
-    return {}
-  }
-}
-function saveBuiltinName(id, name) {
-  var n = loadBuiltinNames()
-  n[id] = name
-  localStorage.setItem("asset-guard-builtin-names", JSON.stringify(n))
-  builtinNames.value = n
-}
-const editTarget = ref(null)
-const editType = ref("")
-const editName = ref("")
-const editIcon = ref("")
-const popupShow = ref(false)
-const popupTarget = ref(null)
-const confirmDelete = ref(false)
-const currentSection = ref(null)
-const newName = ref("")
-const newIcon = ref("🎒")
-const newSecName = ref("")
-const newSecIcon = ref("📦")
-const newSecType = ref("bag")
-const secIcons = ["📦", "🧰", "🛠️", "📚", "🎮", "👟", "🧥", "🎨", "🪴", "🧺"]
+const viewMode = ref(getPreferences().homeView)
+const itemSort = ref(getPreferences().itemSort)
+const showManager = ref(false)
+const createTarget = ref(null)
+const loading = ref(true)
 
-onMounted(async () => {
-  await Promise.all([bagStore.loadAll(), roomStore.loadAll(), itemStore.loadItems()])
-  sectionStore.loadAll()
-  builtinNames.value = loadBuiltinNames()
-})
-const bagCounts = computed(() => {
-  const m = {}
-  for (const i of itemStore.items) if (i.bagId) m[i.bagId] = (m[i.bagId] || 0) + 1
-  return m
-})
-const roomCounts = computed(() => {
-  const m = {}
-  for (const i of itemStore.items) if (i.roomId) m[i.roomId] = (m[i.roomId] || 0) + 1
-  return m
-})
-const searchResults = computed(() => {
-  if (!searchQuery.value) return []
-  return itemStore.search(searchQuery.value)
-})
-const itemGroups = computed(() => {
-  const g = {}
-  const s = itemStore.items.filter((i) => i.category)
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    s.forEach((i) => {
-      if (i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q)) {
-        const c = i.category || "其他"
-        if (!g[c]) g[c] = []
-        g[c].push(i)
-      }
-    })
-  } else {
-    s.forEach((i) => {
-      const c = i.category || "其他"
-      if (!g[c]) g[c] = []
-      g[c].push(i)
-    })
-  }
-  return g
-})
+async function load() {
+  loading.value = true
+  await sectionService.importLegacySections()
+  ;[sections.value, nodes.value] = await Promise.all([sectionService.getAllSections(), nodeService.getAllNodes()])
+  await itemStore.loadItems()
+  loading.value = false
+}
 
-function editBag(bag) {
-  editType.value = "bag"
-  editTarget.value = bag
-  editName.value = bag.name
-  editIcon.value = bag.icon || "🎒"
+onMounted(load)
+
+function setView(mode) {
+  viewMode.value = mode
+  updatePreferences({ homeView: mode })
 }
-function editRoom(room) {
-  editType.value = "room"
-  editTarget.value = room
-  editName.value = room.name
-  editIcon.value = room.icon || "🚪"
+
+function setItemSort(event) {
+  itemSort.value = event.target.value
+  updatePreferences({ itemSort: itemSort.value })
 }
-async function saveEdit() {
-  if (!editName.value.trim() || !editTarget.value) return
-  if (editType.value === "bag") {
-    await bagSvc.update(editTarget.value.id, { name: editName.value.trim(), icon: editIcon.value })
-  } else if (editType.value === "room") {
-    await roomSvc.update(editTarget.value.id, { name: editName.value.trim(), icon: editIcon.value })
-  } else if (editType.value === "section") {
-    if (editTarget.value.isBuiltin) {
-      saveBuiltinName(editTarget.value.id, editName.value.trim())
-    } else {
-      secSvc.update(editTarget.value.id, { name: editName.value.trim(), icon: editIcon.value })
-      sectionStore.loadAll()
+
+function roots(sectionId) {
+  return nodes.value
+    .filter((node) => node.sectionId === sectionId && !node.parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+function children(nodeId) {
+  return nodes.value.filter((node) => node.parentId === nodeId).sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+function descendantIds(nodeId) {
+  const result = []
+  const queue = [nodeId]
+  while (queue.length) {
+    const parentId = queue.shift()
+    for (const child of children(parentId)) {
+      result.push(child.id)
+      queue.push(child.id)
     }
   }
-  await bagStore.loadAll()
-  await roomStore.loadAll()
-  editTarget.value = null
+  return result
 }
-async function createBag() {
-  if (!newName.value.trim()) return
-  var b = await bagStore.create({ name: newName.value.trim(), icon: newIcon.value, spaceId: "private" })
-  if (currentSection.value) {
-    currentSection.value.bagIds.push(b.id)
-    secSvc.update(currentSection.value.id, { bagIds: currentSection.value.bagIds })
-    sectionStore.loadAll()
-    currentSection.value = null
+
+function nodeItems(nodeId, recursive = false) {
+  const ids = new Set(recursive ? [nodeId, ...descendantIds(nodeId)] : [nodeId])
+  return itemStore.items.filter((item) => ids.has(item.locationNodeId))
+}
+
+function nodeStats(node) {
+  const directChildren = children(node.id)
+  const items = nodeItems(node.id, true)
+  return {
+    childCount: directChildren.length,
+    childLabel: node.kind === "space" ? "区域" : node.kind === "area" ? "容器" : "子空间",
+    itemCount: items.length,
+    collectionValue: items.reduce((sum, item) => sum + (getEffectiveValuation(item) || 0), 0),
   }
-  showCreateBag.value = false
-  newName.value = ""
 }
-async function createRoom() {
-  if (!newName.value.trim()) return
-  var r = await roomStore.create({ name: newName.value.trim(), icon: newIcon.value, spaceId: "private" })
-  if (currentSection.value) {
-    currentSection.value.roomIds.push(r.id)
-    secSvc.update(currentSection.value.id, { roomIds: currentSection.value.roomIds })
-    sectionStore.loadAll()
-    currentSection.value = null
-  }
-  showCreateRoom.value = false
-  newName.value = ""
+
+function formatMoney(value, currency = "CNY") {
+  const amount = Number(value)
+  if (!Number.isFinite(amount) || amount <= 0) return "—"
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+    notation: amount >= 100000 ? "compact" : "standard",
+  }).format(amount)
 }
-function openCreateInSection(sec) {
-  currentSection.value = sec
-  if (sec.type === "bag") showCreateBag.value = true
-  else showCreateRoom.value = true
+
+function cover(item) {
+  return item.images?.find((image) => image.isCover)?.url || item.photo || ""
 }
-function showPopup(type, item) {
-  popupTarget.value = { type, item }
-  popupShow.value = true
+
+const normalizedQuery = computed(() => searchQuery.value.trim().toLowerCase())
+const searchedNodes = computed(() => {
+  if (!normalizedQuery.value) return []
+  return nodes.value.filter((node) => `${node.name} ${node.description}`.toLowerCase().includes(normalizedQuery.value))
+})
+const searchedItems = computed(() => {
+  if (!normalizedQuery.value) return viewMode.value === "items" ? itemStore.items : []
+  return itemStore.search(normalizedQuery.value)
+})
+const sortedItems = computed(() =>
+  [...searchedItems.value].sort((a, b) => {
+    if (itemSort.value === "itemCode") return String(a.itemCode || a.id).localeCompare(String(b.itemCode || b.id))
+    if (itemSort.value === "value") {
+      const valueOf = (item) => getEffectiveValuation(item) ?? Number(item.purchasePrice || 0)
+      return valueOf(b) - valueOf(a)
+    }
+    return String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+  }),
+)
+
+function defaultRootKind(section) {
+  return section.key === "bags" ? "container" : "space"
 }
-function closePopup() {
-  popupShow.value = false
-  setTimeout(() => {
-    popupTarget.value = null
-  }, 200)
+
+function openCreate(section) {
+  createTarget.value = { section, kind: defaultRootKind(section) }
 }
-function popupEdit() {
-  if (!popupTarget.value) return
-  if (popupTarget.value.type === "bag") editBag(popupTarget.value.item)
-  else if (popupTarget.value.type === "room") editRoom(popupTarget.value.item)
-  else if (popupTarget.value.type === "section") {
-    editType.value = "section"
-    editTarget.value = popupTarget.value.item
-    editName.value = popupTarget.value.item.isBuiltin
-      ? builtinNames.value[popupTarget.value.item.id] || popupTarget.value.item.name
-      : popupTarget.value.item.name
-    editIcon.value = popupTarget.value.item.icon || "📦"
-  }
-  closePopup()
+
+async function onRootSaved() {
+  createTarget.value = null
+  await load()
 }
-async function popupDelete() {
-  if (!popupTarget.value) return
-  if (popupTarget.value.type === "bag") await bagSvc.del(popupTarget.value.item.id)
-  else if (popupTarget.value.type === "room") await roomSvc.del(popupTarget.value.item.id)
-  else if (popupTarget.value.type === "section" && !popupTarget.value.item.isBuiltin) {
-    secSvc.remove(popupTarget.value.item.id)
-    sectionStore.loadAll()
-  }
-  await bagStore.loadAll()
-  await roomStore.loadAll()
-  closePopup()
-}
-async function confirmPopupDelete() {
-  await popupDelete()
-  confirmDelete.value = false
-}
-function confirmSectionCreate() {
-  if (!newSecName.value.trim()) return
-  sectionStore.create({ name: newSecName.value.trim(), icon: newSecIcon.value, type: newSecType.value })
-  showSectionPicker.value = false
-  newSecName.value = ""
-}
-const bagIcons = ["🎒", "🧳", "👜", "👝", "💼", "🛄"]
-const roomIcons = ["🛏️", "📖", "🍳", "🚪", "🛋️", "🚿", "🪴", "🧺"]
 </script>
+
 <template>
-  <div class="flex flex-col h-full">
-    <div class="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-100">
-      <div class="flex-1 flex items-center bg-gray-100 rounded-xl px-3 h-9 gap-2">
-        <span class="text-sm text-gray-400">🔍</span
-        ><input
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜索物品"
-          class="flex-1 bg-transparent border-none outline-none text-sm"
-        />
-      </div>
-      <div
-        @click="toggleViewMode"
-        class="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-sm text-gray-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors"
-      >
-        {{ viewMode === "card" ? "⊞" : "⊟" }}
-      </div>
-    </div>
-    <div class="flex-1 overflow-y-auto px-4 pb-4">
-      <div v-if="searchQuery" class="mt-3">
-        <div class="text-xs text-gray-400 mb-2">找到 {{ searchResults.length }} 件物品</div>
-        <div v-if="searchResults.length === 0" class="text-center py-8 text-sm text-gray-400">没有匹配的物品</div>
-        <div v-else class="bg-white rounded-xl border divide-y overflow-hidden">
-          <div
-            v-for="item in searchResults"
-            :key="item.id"
-            @click="router.push('/item/' + item.id)"
-            class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+  <div class="flex h-full flex-col bg-[#f6f5f1]">
+    <header class="border-b bg-white px-4 pb-3 pt-[max(14px,env(safe-area-inset-top))]">
+      <div class="flex items-center gap-2">
+        <label class="flex h-10 flex-1 items-center gap-2 rounded-xl bg-gray-100 px-3">
+          <span class="text-gray-400">⌕</span
+          ><input
+            v-model="searchQuery"
+            class="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            placeholder="搜索物品、空间或标签"
+          />
+        </label>
+        <div class="flex rounded-xl bg-gray-100 p-1 text-xs">
+          <button
+            class="rounded-lg px-3 py-1.5"
+            :class="viewMode === 'space' ? 'bg-white font-semibold text-blue-600 shadow-sm' : 'text-gray-400'"
+            @click="setView('space')"
           >
-            <span class="text-xl">📦</span>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium truncate">{{ item.name }}</div>
-              <div class="text-xs text-gray-400">{{ item.category }}</div>
-            </div>
-          </div>
+            空间
+          </button>
+          <button
+            class="rounded-lg px-3 py-1.5"
+            :class="viewMode === 'items' ? 'bg-white font-semibold text-blue-600 shadow-sm' : 'text-gray-400'"
+            @click="setView('items')"
+          >
+            物品
+          </button>
         </div>
       </div>
-      <template v-if="!searchQuery && viewMode === 'card'">
-        <!-- Bags -->
-        <div class="mt-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold">
-              🎒 {{ builtinNames._bags || "\u6211\u7684\u5305\u5305" }}
-              <span class="text-xs text-gray-400 font-normal ml-1">{{ bagStore.bags.length }}</span>
-            </h2>
-            <div
-              @click.stop="showPopup('section', { id: '_bags', name: '\u6211\u7684\u5305\u5305', isBuiltin: true })"
-              class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-200"
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-4 pb-6">
+      <div v-if="loading" class="py-16 text-center text-sm text-gray-400">正在整理空间…</div>
+
+      <template v-else-if="normalizedQuery">
+        <section class="mt-4">
+          <h2 class="text-xs font-semibold text-gray-400">空间 · {{ searchedNodes.length }}</h2>
+          <div class="mt-2 space-y-2">
+            <button
+              v-for="node in searchedNodes"
+              :key="node.id"
+              class="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left"
+              @click="router.push(`/spaces/${node.id}`)"
             >
-              ⋯
-            </div>
+              <span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-xl"
+                ><img v-if="node.images?.[0]" :src="node.images[0].url" class="h-full w-full object-cover" /><template
+                  v-else
+                  >{{ node.icon }}</template
+                ></span
+              ><span class="min-w-0 flex-1"
+                ><strong class="block truncate text-sm">{{ node.name }}</strong
+                ><small class="text-[11px] text-gray-400">{{ nodeStats(node).itemCount }} 件物品</small></span
+              ><span class="text-gray-300">›</span>
+            </button>
+            <p v-if="!searchedNodes.length" class="rounded-2xl bg-white p-4 text-center text-xs text-gray-400">
+              没有匹配的空间
+            </p>
           </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div
-              v-for="bag in bagStore.bags"
-              :key="bag.id"
-              @click="router.push('/bag/' + bag.id)"
-              class="bg-white rounded-xl border p-3 text-center relative cursor-pointer hover:shadow-sm transition-shadow group"
-            >
-              <div
-                @click.stop="showPopup('bag', bag)"
-                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                ⋯
-              </div>
-              <span class="text-2xl block mb-1">{{ bag.icon || "🎒" }}</span>
-              <div class="text-xs font-semibold text-gray-800 truncate">{{ bag.name }}</div>
-              <div class="text-[10px] text-gray-400 mt-0.5">{{ bagCounts[bag.id] || 0 }} 件</div>
-            </div>
-            <div
-              @click="showCreateBag = true"
-              class="bg-transparent rounded-xl border-2 border-dashed border-gray-200 p-3 flex flex-col items-center justify-center min-h-[80px] cursor-pointer hover:border-blue-300 transition-colors"
-            >
-              <span class="text-lg text-gray-300">+</span><span class="text-[10px] text-gray-300">新建包</span>
-            </div>
-          </div>
-        </div>
-        <!-- Rooms -->
-        <div class="mt-5">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold">
-              🚪 {{ builtinNames._rooms || "\u6211\u7684\u623F\u95F4" }}
-              <span class="text-xs text-gray-400 font-normal ml-1">{{ roomStore.rooms.length }}</span>
-            </h2>
-            <div
-              @click.stop="showPopup('section', { id: '_rooms', name: '\u6211\u7684\u623F\u95F4', isBuiltin: true })"
-              class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-200"
-            >
-              ⋯
-            </div>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div
-              v-for="room in roomStore.rooms"
-              :key="room.id"
-              @click="router.push('/room/' + room.id)"
-              class="bg-white rounded-xl border p-3 text-center relative cursor-pointer hover:shadow-sm transition-shadow group"
-            >
-              <div
-                @click.stop="showPopup('room', room)"
-                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                ⋯
-              </div>
-              <span class="text-2xl block mb-1">{{ room.icon || "🚪" }}</span>
-              <div class="text-xs font-semibold text-gray-800 truncate">{{ room.name }}</div>
-              <div class="text-[10px] text-gray-400 mt-0.5">{{ roomCounts[room.id] || 0 }} 件</div>
-            </div>
-            <div
-              @click="showCreateRoom = true"
-              class="bg-transparent rounded-xl border-2 border-dashed border-gray-200 p-3 flex flex-col items-center justify-center min-h-[80px] cursor-pointer hover:border-blue-300 transition-colors"
-            >
-              <span class="text-lg text-gray-300">+</span><span class="text-[10px] text-gray-300">新建房间</span>
-            </div>
-          </div>
-        </div>
-        <!-- Custom Sections -->
-        <div v-for="sec in sectionStore.sections.filter((s) => !s.builtin)" :key="sec.id" class="mt-5">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold" style="color: var(--color-text-primary)">
-              {{ sec.icon || "📦" }} {{ sec.name }}
-              <span class="text-xs text-gray-400 font-normal ml-1">{{
-                sec.type === "bag" ? sec.bagIds?.length || 0 : sec.roomIds?.length || 0
-              }}</span>
-            </h2>
-            <div
-              @click.stop="showPopup('section', sec)"
-              class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-200"
-            >
-              ⋯
-            </div>
-          </div>
-          <div v-if="sec.type === 'bag'" class="grid grid-cols-3 gap-3">
-            <div
-              v-for="bag in bagStore.bags.filter((b) => sec.bagIds?.includes(b.id))"
-              :key="bag.id"
-              @click="router.push('/bag/' + bag.id)"
-              class="bg-white rounded-xl border p-3 text-center cursor-pointer hover:shadow-sm transition-shadow"
-            >
-              <span class="text-2xl block mb-1">{{ bag.icon || "🎒" }}</span>
-              <div class="text-xs font-semibold truncate">{{ bag.name }}</div>
-              <div class="text-[10px] text-gray-400 mt-0.5">{{ bagCounts[bag.id] || 0 }} 件</div>
-            </div>
-            <div
-              @click="openCreateInSection(sec)"
-              class="bg-transparent rounded-xl border-2 border-dashed border-gray-200 p-3 flex flex-col items-center justify-center min-h-[80px] cursor-pointer hover:border-blue-300 transition-colors"
-            >
-              <span class="text-lg text-gray-300">+</span><span class="text-[10px] text-gray-300">新建包</span>
-            </div>
-          </div>
-          <div v-if="sec.type === 'room'" class="grid grid-cols-3 gap-3">
-            <div
-              v-for="room in roomStore.rooms.filter((r) => sec.roomIds?.includes(r.id))"
-              :key="room.id"
-              @click="router.push('/room/' + room.id)"
-              class="bg-white rounded-xl border p-3 text-center cursor-pointer hover:shadow-sm transition-shadow"
-            >
-              <span class="text-2xl block mb-1">{{ room.icon || "🚪" }}</span>
-              <div class="text-xs font-semibold truncate">{{ room.name }}</div>
-              <div class="text-[10px] text-gray-400 mt-0.5">{{ roomCounts[room.id] || 0 }} 件</div>
-            </div>
-            <div
-              @click="openCreateInSection(sec)"
-              class="bg-transparent rounded-xl border-2 border-dashed border-gray-200 p-3 flex flex-col items-center justify-center min-h-[80px] cursor-pointer hover:border-blue-300 transition-colors"
-            >
-              <span class="text-lg text-gray-300">+</span><span class="text-[10px] text-gray-300">新建房间</span>
-            </div>
-          </div>
-        </div>
-        <div
-          @click="showSectionPicker = true"
-          class="mt-5 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-300 text-gray-400 hover:text-blue-500 transition-all"
-        >
-          <span class="text-base font-bold">+</span><span class="text-xs font-medium">添加新分区（自定义分组）</span>
-        </div>
-      </template>
-      <template v-if="!searchQuery && viewMode === 'table'">
-        <div v-for="(items, cat) in itemGroups" :key="cat" class="mt-4">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-sm font-bold text-gray-700">{{ cat }}</span
-            ><span class="text-xs text-gray-400">{{ items.length }} 件</span>
-          </div>
-          <div class="bg-white rounded-xl border divide-y overflow-hidden mb-4">
-            <div
-              v-for="item in items"
+        </section>
+        <section class="mt-5">
+          <h2 class="text-xs font-semibold text-gray-400">物品 · {{ searchedItems.length }}</h2>
+          <div class="mt-2 space-y-2">
+            <button
+              v-for="item in searchedItems"
               :key="item.id"
-              @click="router.push('/item/' + item.id)"
-              class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm"
+              class="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left"
+              @click="router.push(`/item/${item.id}`)"
             >
-              <span class="text-base w-6 text-center">📦</span
-              ><span class="flex-1 font-medium truncate">{{ item.name }}</span
-              ><span class="text-xs text-gray-400">{{ item.value ? "¥" + item.value : "—" }}</span
-              ><span class="text-[10px] text-gray-400 min-w-[40px] text-right">{{
-                item.bagId ? "🎒" : item.roomId ? "🚪" : ""
-              }}</span>
-            </div>
+              <span class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-xl"
+                ><img v-if="cover(item)" :src="cover(item)" class="h-full w-full object-cover" /><template v-else
+                  >📦</template
+                ></span
+              ><span class="min-w-0 flex-1"
+                ><strong class="block truncate text-sm">{{ item.name }}</strong
+                ><small class="text-[11px] text-gray-400"
+                  >{{ item.category }} · {{ item.tags?.join(" · ") || "暂无标签" }}</small
+                ></span
+              ><span class="text-gray-300">›</span>
+            </button>
+            <p v-if="!searchedItems.length" class="rounded-2xl bg-white p-4 text-center text-xs text-gray-400">
+              没有匹配的物品
+            </p>
           </div>
-        </div>
-        <div v-if="Object.keys(itemGroups).length === 0" class="text-center py-12 text-sm text-gray-400">暂无物品</div>
+        </section>
       </template>
-    </div>
 
-    <!-- Popup Menu -->
-    <div v-if="popupShow" class="fixed inset-0 z-50" @click="closePopup">
-      <div class="absolute inset-0 bg-black/20"></div>
-      <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl px-4 pb-6 pt-3" @click.stop>
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <div class="text-center text-sm text-gray-400 mb-4">
-          {{ popupTarget?.type === "bag" ? "🎒" : popupTarget?.type === "room" ? "🚪" : "📦" }}
-          {{ popupTarget?.item?.name }}
-        </div>
-        <button @click="popupEdit" class="w-full py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 rounded-xl">
-          编辑</button
-        ><button
-          @click="confirmDelete = true"
-          :class="
-            popupTarget?.item?.isBuiltin
-              ? 'w-full py-3 text-sm font-medium text-gray-300 rounded-xl'
-              : 'w-full py-3 text-sm font-medium text-red-500 hover:bg-red-50 rounded-xl'
-          "
+      <template v-else-if="viewMode === 'space'">
+        <section v-for="section in sections" :key="section.id" class="mt-5">
+          <div class="mb-2 flex items-end justify-between">
+            <div @dblclick="showManager = true">
+              <h2 class="text-base font-bold">{{ section.icon }} {{ section.name }}</h2>
+              <p class="mt-0.5 text-[11px] text-gray-400">{{ section.description }}</p>
+            </div>
+            <span class="text-[11px] text-gray-400">{{ roots(section.id).length }} 个空间</span>
+          </div>
+          <div class="space-y-3">
+            <article
+              v-for="node in roots(section.id)"
+              :key="node.id"
+              class="overflow-hidden rounded-2xl border bg-white shadow-sm"
+            >
+              <button
+                class="grid w-full grid-cols-[56px_1fr_auto] items-center gap-3 p-4 text-left"
+                @click="router.push(`/spaces/${node.id}`)"
+              >
+                <span class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 text-2xl"
+                  ><img v-if="node.images?.[0]" :src="node.images[0].url" class="h-full w-full object-cover" /><template
+                    v-else
+                    >{{ node.icon }}</template
+                  ></span
+                >
+                <span class="min-w-0"
+                  ><strong class="block truncate text-base">{{ node.name }}</strong
+                  ><small class="mt-1 block text-[11px] text-gray-400"
+                    ><template v-if="nodeStats(node).childCount"
+                      >{{ nodeStats(node).childCount }} 个{{ nodeStats(node).childLabel }} · </template
+                    >{{ nodeStats(node).itemCount }} 件物品</small
+                  ></span
+                >
+                <span class="text-right text-[10px] text-gray-400"
+                  ><span v-if="node.spaceValue" class="block"
+                    >空间 {{ formatMoney(node.spaceValue, node.currency) }}</span
+                  ><strong v-if="nodeStats(node).collectionValue" class="mt-1 block text-xs text-gray-600"
+                    >藏品 {{ formatMoney(nodeStats(node).collectionValue, node.currency) }}</strong
+                  ></span
+                >
+              </button>
+              <div v-if="children(node.id).length" class="grid grid-cols-3 gap-2 border-t bg-gray-50/70 p-3">
+                <button
+                  v-for="child in children(node.id).slice(0, 3)"
+                  :key="child.id"
+                  class="rounded-xl bg-white p-2 text-left"
+                  @click="router.push(`/spaces/${child.id}`)"
+                >
+                  <span class="text-lg">{{ child.icon }}</span
+                  ><strong class="mt-1 block truncate text-[11px]">{{ child.name }}</strong
+                  ><small class="text-[10px] text-gray-400">{{ nodeStats(child).itemCount }} 件</small>
+                </button>
+              </div>
+              <div v-else-if="nodeItems(node.id).length" class="flex gap-2 overflow-x-auto border-t bg-gray-50/70 p-3">
+                <button
+                  v-for="item in nodeItems(node.id).slice(0, 4)"
+                  :key="item.id"
+                  class="flex min-w-[120px] items-center gap-2 rounded-xl bg-white p-2 text-left"
+                  @click="router.push(`/item/${item.id}`)"
+                >
+                  <span class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-gray-50"
+                    ><img v-if="cover(item)" :src="cover(item)" class="h-full w-full object-cover" /><template v-else
+                      >📦</template
+                    ></span
+                  ><span class="min-w-0"
+                    ><strong class="block truncate text-[11px]">{{ item.name }}</strong
+                    ><small class="text-[9px] text-gray-400">{{ item.category }}</small></span
+                  >
+                </button>
+              </div>
+            </article>
+            <button
+              class="w-full rounded-2xl border-2 border-dashed border-gray-200 py-3 text-xs font-semibold text-blue-600"
+              @click="openCreate(section)"
+            >
+              ＋ 新增{{ section.key === "bags" ? "移动容器" : "空间" }}
+            </button>
+          </div>
+        </section>
+        <button
+          class="mt-5 w-full rounded-2xl border-2 border-dashed border-blue-200 py-3 text-sm font-semibold text-blue-600"
+          @click="showManager = true"
         >
-          {{ popupTarget?.item?.isBuiltin ? "\u4E0D\u53EF\u5220\u9664" : "\u5220\u9664" }}
+          ＋ 新增分区
         </button>
-      </div>
-    </div>
+      </template>
 
-    <!-- Delete Confirm -->
-    <div
-      v-if="confirmDelete"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-      @click.self="confirmDelete = false"
-    >
-      <div class="bg-white rounded-xl p-5 mx-4 max-w-xs w-full">
-        <h3 class="text-sm font-bold mb-2">确认删除</h3>
-        <p class="text-xs text-gray-500 mb-4">删除后不可恢复</p>
-        <div class="flex gap-3">
+      <template v-else>
+        <div class="flex items-center justify-between gap-3 border-b py-3">
+          <p class="text-sm font-semibold">
+            全部物品 <span class="font-normal text-gray-400">{{ itemStore.items.length }}</span>
+          </p>
+          <label class="flex items-center gap-2 text-xs text-gray-400">
+            排序
+            <select
+              :value="itemSort"
+              aria-label="物品排序方式"
+              class="rounded-xl border bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none"
+              @change="setItemSort"
+            >
+              <option value="itemCode">物品 ID</option>
+              <option value="value">价值（高到低）</option>
+              <option value="createdAt">加入时间（新到旧）</option>
+            </select>
+          </label>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <button
-            @click="confirmDelete = false"
-            class="flex-1 py-2 border rounded-lg text-xs font-medium text-gray-600"
+            v-for="item in sortedItems"
+            :key="item.id"
+            class="relative min-h-[132px] overflow-hidden rounded-2xl border bg-white p-3 text-left"
+            @click="router.push(`/item/${item.id}`)"
           >
-            取消</button
-          ><button @click="confirmPopupDelete" class="flex-1 py-2 bg-red-500 text-white rounded-lg text-xs font-medium">
-            删除
+            <span
+              class="absolute right-3 top-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-2xl"
+              ><img v-if="cover(item)" :src="cover(item)" class="h-full w-full object-cover" /><template v-else
+                >📦</template
+              ></span
+            ><span class="block pr-14"
+              ><strong class="block line-clamp-2 text-sm">{{ item.name }}</strong
+              ><small class="mt-1 block truncate text-[10px] text-gray-400">{{ item.itemCode }}</small
+              ><small class="mt-2 block text-[10px] text-blue-600">{{ item.category }}</small></span
+            ><span class="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1"
+              ><i
+                v-for="tag in item.tags?.slice(0, 2)"
+                :key="tag"
+                class="rounded-full bg-gray-100 px-2 py-0.5 text-[9px] not-italic text-gray-500"
+                >{{ tag }}</i
+              ></span
+            >
           </button>
         </div>
-      </div>
-    </div>
+        <p v-if="!itemStore.items.length" class="py-16 text-center text-sm text-gray-400">
+          还没有物品，点击底部中央“＋”开始添加
+        </p>
+      </template>
+    </main>
 
-    <!-- Edit Modal -->
-    <div
-      v-if="editTarget"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
-      @click.self="editTarget = null"
-    >
-      <div class="bg-white rounded-t-2xl w-full max-w-lg px-5 pt-4 pb-6">
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <h3 class="text-base font-bold text-center mb-4">
-          {{ editType === "bag" ? "🎒 编辑包包" : editType === "room" ? "🚪 编辑房间" : "📦 编辑分区" }}
-        </h3>
-        <div class="flex items-center gap-1 overflow-x-auto p-1 bg-gray-50 rounded-xl mb-3">
-          <button
-            v-for="c in editType === 'bag' ? bagIcons : editType === 'room' ? roomIcons : bagIcons.concat(roomIcons)"
-            :key="c"
-            @click="editIcon = c"
-            class="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-            :class="editIcon === c ? 'bg-white shadow-sm' : ''"
-          >
-            {{ c }}
-          </button>
-        </div>
-        <input v-model="editName" class="w-full border rounded-xl px-3 py-2.5 text-sm" placeholder="名称" />
-        <div class="flex gap-3 mt-6">
-          <button @click="editTarget = null" class="flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600">
-            取消</button
-          ><button @click="saveEdit" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold">
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Create Bag Modal -->
-    <div
-      v-if="showCreateBag"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
-      @click.self="showCreateBag = false"
-    >
-      <div class="bg-white rounded-t-2xl w-full max-w-lg px-5 pt-4 pb-6">
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <h3 class="text-base font-bold text-center mb-4">🎒 新建包包</h3>
-        <div class="flex items-center gap-1 overflow-x-auto p-1 bg-gray-50 rounded-xl mb-3">
-          <button
-            v-for="c in bagIcons"
-            :key="c"
-            @click="newIcon = c"
-            class="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-            :class="newIcon === c ? 'bg-white shadow-sm' : ''"
-          >
-            {{ c }}
-          </button>
-        </div>
-        <input v-model="newName" class="w-full border rounded-xl px-3 py-2.5 text-sm" placeholder="包包名称" />
-        <div class="flex gap-3 mt-6">
-          <button
-            @click="showCreateBag = false"
-            class="flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600"
-          >
-            取消</button
-          ><button @click="createBag" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold">
-            创建
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Create Room Modal -->
-    <div
-      v-if="showCreateRoom"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
-      @click.self="showCreateRoom = false"
-    >
-      <div class="bg-white rounded-t-2xl w-full max-w-lg px-5 pt-4 pb-6">
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <h3 class="text-base font-bold text-center mb-4">🚪 新建房间</h3>
-        <div class="flex items-center gap-1 overflow-x-auto p-1 bg-gray-50 rounded-xl mb-3">
-          <button
-            v-for="c in roomIcons"
-            :key="c"
-            @click="newIcon = c"
-            class="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-            :class="newIcon === c ? 'bg-white shadow-sm' : ''"
-          >
-            {{ c }}
-          </button>
-        </div>
-        <input v-model="newName" class="w-full border rounded-xl px-3 py-2.5 text-sm" placeholder="房间名称" />
-        <div class="flex gap-3 mt-6">
-          <button
-            @click="showCreateRoom = false"
-            class="flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600"
-          >
-            取消</button
-          ><button @click="createRoom" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold">
-            创建
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Section Picker -->
-    <div
-      v-if="showSectionPicker"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
-      @click.self="showSectionPicker = false"
-    >
-      <div class="bg-white rounded-t-2xl w-full max-w-lg px-5 pt-4 pb-6">
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-        <h3 class="text-base font-bold text-center mb-4" style="color: var(--color-text-primary)">新建分区</h3>
-        <div class="flex gap-2 mb-3">
-          <button
-            @click="newSecType = 'bag'"
-            class="flex-1 py-2 rounded-xl text-xs font-medium"
-            :style="
-              newSecType === 'bag'
-                ? 'background:var(--brand-primary);color:white'
-                : 'background:var(--color-bg);color:var(--color-text-secondary);border:1px solid var(--color-border)'
-            "
-          >
-            🎒 包包分区</button
-          ><button
-            @click="newSecType = 'room'"
-            class="flex-1 py-2 rounded-xl text-xs font-medium"
-            :style="
-              newSecType === 'room'
-                ? 'background:var(--brand-primary);color:white'
-                : 'background:var(--color-bg);color:var(--color-text-secondary);border:1px solid var(--color-border)'
-            "
-          >
-            🚪 房间分区
-          </button>
-        </div>
-        <div class="flex items-center gap-1 overflow-x-auto p-1 bg-gray-50 rounded-xl mb-3">
-          <button
-            v-for="c in newSecType === 'bag' ? bagIcons : roomIcons"
-            :key="c"
-            @click="newSecIcon = c"
-            class="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-            :class="newSecIcon === c ? 'bg-white shadow-sm' : ''"
-          >
-            {{ c }}
-          </button>
-        </div>
-        <input
-          v-model="newSecName"
-          @keydown.enter="confirmSectionCreate"
-          class="w-full border rounded-xl px-3 py-2.5 text-sm"
-          placeholder="分区名称"
-          style="border-color: var(--color-border)"
-        />
-        <div class="flex gap-3 mt-4">
-          <button
-            @click="showSectionPicker = false"
-            class="flex-1 py-2.5 border rounded-xl text-sm font-medium"
-            style="border-color: var(--color-border); color: var(--color-text-secondary)"
-          >
-            取消</button
-          ><button
-            @click="confirmSectionCreate"
-            class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
-            :style="newSecName.trim() ? 'background:var(--brand-primary)' : 'background:var(--color-text-tertiary)'"
-          >
-            创建
-          </button>
-        </div>
-      </div>
-    </div>
+    <SpaceNodeEditorSheet
+      :show="Boolean(createTarget)"
+      :section-id="createTarget?.section.id || ''"
+      :suggested-kind="createTarget?.kind || ''"
+      @close="createTarget = null"
+      @saved="onRootSaved"
+    />
+    <SectionManagerSheet :show="showManager" :sections="sections" @close="showManager = false" @changed="load" />
   </div>
 </template>

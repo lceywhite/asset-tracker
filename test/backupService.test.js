@@ -26,6 +26,15 @@ test("accepts a legacy v1 backup without check sessions", () => {
   assert.deepEqual(validateBackup(payload), { valid: true, errors: [] })
 })
 
+test("accepts a v2 backup without item module v3 stores", () => {
+  const payload = validPayload()
+  payload.version = 2
+  delete payload.data.stores.homeSections
+  delete payload.data.stores.spaceNodes
+  delete payload.data.stores.spaceLayouts
+  assert.deepEqual(validateBackup(payload), { valid: true, errors: [] })
+})
+
 test("rejects partial and unknown backups", () => {
   const result = validateBackup({ format: "legacy", version: 0, data: { stores: {}, localStorage: {} } })
   assert.equal(result.valid, false)

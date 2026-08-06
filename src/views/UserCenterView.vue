@@ -12,15 +12,16 @@ import {
   validateBackup,
 } from "@/services/backupService"
 import { exportToJSON, importJSON } from "@/utils/export"
+import { getPreferences, updatePreferences } from "@/services/itemPreferencesService"
 
 const router = useRouter()
 const userStore = useUserStore()
 const editOpen = ref(false)
 const editName = ref("")
 const message = ref("")
-const counts = ref({ items: 0, rooms: 0, bags: 0, activities: 0 })
+const counts = ref({ items: 0, spaces: 0, containers: 0, activities: 0 })
 const storageLabel = ref("正在计算")
-const viewMode = ref(localStorage.getItem("asset-tracker-item-view") || "card")
+const preferences = ref(getPreferences())
 const importPreview = ref(null)
 const importPayload = ref(null)
 const fileInput = ref(null)
@@ -36,13 +37,17 @@ function flash(text) {
 }
 
 async function refreshStats() {
-  const [items, rooms, bags, activities] = await Promise.all([
+  const [items, nodes, activities] = await Promise.all([
     db.getAll("items"),
-    db.getAll("rooms"),
-    db.getAll("bags"),
+    db.getAll("spaceNodes"),
     db.getAll("activities"),
   ])
-  counts.value = { items: items.length, rooms: rooms.length, bags: bags.length, activities: activities.length }
+  counts.value = {
+    items: items.length,
+    spaces: nodes.filter((node) => node.kind === "space").length,
+    containers: nodes.filter((node) => node.kind === "container").length,
+    activities: activities.length,
+  }
   if (navigator.storage?.estimate) {
     const estimate = await navigator.storage.estimate()
     storageLabel.value = estimate.usage ? `${Math.max(0.1, estimate.usage / 1024 / 1024).toFixed(1)} MB` : "少于 0.1 MB"
@@ -61,10 +66,9 @@ function saveProfile() {
   editOpen.value = false
   flash("个人资料已更新")
 }
-function setViewMode(mode) {
-  viewMode.value = mode
-  localStorage.setItem("asset-tracker-item-view", mode)
-  flash("物品页默认视图已更新")
+function setPreference(key, value) {
+  preferences.value = updatePreferences({ [key]: value })
+  flash("偏好设置已更新")
 }
 async function exportBackup() {
   const backup = await createBackup()
@@ -93,6 +97,7 @@ async function applyRestore(mode) {
   importPayload.value = null
   importPreview.value = null
   await refreshStats()
+  preferences.value = getPreferences()
   flash(mode === "replace" ? "数据已从备份替换" : "备份数据已合并")
 }
 async function clearData() {
@@ -100,6 +105,7 @@ async function clearData() {
   if (!window.confirm("此操作无法撤销。再次确认清空本机数据？")) return
   await clearBusinessData()
   await refreshStats()
+  preferences.value = getPreferences()
   flash("本机业务数据已清空")
 }
 </script>
@@ -130,8 +136,8 @@ async function clearData() {
       <div
         v-for="stat in [
           { label: '物品', value: counts.items },
-          { label: '房间', value: counts.rooms },
-          { label: '包', value: counts.bags },
+          { label: '空间', value: counts.spaces },
+          { label: '容器', value: counts.containers },
           { label: '行程', value: counts.activities },
         ]"
         :key="stat.label"
@@ -145,27 +151,65 @@ async function clearData() {
 
     <section class="mb-4">
       <h2 class="text-xs font-semibold text-gray-400 px-1 mb-2">偏好设置</h2>
-      <div class="bg-white rounded-2xl border overflow-hidden" style="border-color: var(--color-border-light)">
+      <div class="bg-white rounded-2xl border divide-y overflow-hidden" style="border-color: var(--color-border-light)">
         <div class="p-4 flex items-center justify-between gap-4">
           <div>
             <div class="text-sm font-semibold">物品页默认视图</div>
-            <div class="text-xs text-gray-400 mt-1">按空间卡片或紧凑列表浏览</div>
+            <div class="text-xs text-gray-400 mt-1">默认进入空间树或全部物品</div>
           </div>
           <div class="flex rounded-lg bg-gray-100 p-1 text-xs">
             <button
               class="px-3 py-1.5 rounded-md"
-              :class="viewMode === 'card' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
-              @click="setViewMode('card')"
+              :class="preferences.homeView === 'space' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+              @click="setPreference('homeView', 'space')"
             >
-              卡片
+              空间
             </button>
             <button
               class="px-3 py-1.5 rounded-md"
-              :class="viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
-              @click="setViewMode('table')"
+              :class="preferences.homeView === 'items' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+              @click="setPreference('homeView', 'items')"
             >
-              列表
+              物品
             </button>
+          </div>
+        </div>
+        <div class="p-4 flex items-center justify-between gap-4">
+          <div>
+            <div class="text-sm font-semibold">默认添加方式</div>
+            <div class="text-xs text-gray-400 mt-1">添加页仍可随时切换</div>
+          </div>
+          <div class="flex rounded-lg bg-gray-100 p-1 text-xs">
+            <button
+              class="px-3 py-1.5 rounded-md"
+              :class="preferences.addMode === 'quick' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+              @click="setPreference('addMode', 'quick')"
+            >
+              快速</button
+            ><button
+              class="px-3 py-1.5 rounded-md"
+              :class="preferences.addMode === 'guided' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+              @click="setPreference('addMode', 'guided')"
+            >
+              逐步
+            </button>
+          </div>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-semibold">默认估值规则</div>
+              <div class="text-xs text-gray-400 mt-1">直线折旧当前只记录偏好，不执行计算</div>
+            </div>
+            <select
+              class="rounded-lg border bg-white px-3 py-2 text-xs"
+              :value="preferences.valuationMode"
+              @change="setPreference('valuationMode', $event.target.value)"
+            >
+              <option value="none">不计算</option>
+              <option value="manual">手动估值</option>
+              <option value="linear">使用年限直线折旧</option>
+            </select>
           </div>
         </div>
       </div>

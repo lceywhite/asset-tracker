@@ -70,6 +70,8 @@ try {
   await installV4Fixture()
   await page.reload({ waitUntil: "networkidle" })
   await page.getByText("测试房间", { exact: true }).waitFor()
+  runtimeErrors.length = 0
+  await page.screenshot({ path: resolve(outputDirectory, "item-home-v3-iphone.png"), fullPage: true })
 
   const schema = await page.evaluate(async () => {
     const request = indexedDB.open("asset-tracker-db")
@@ -89,20 +91,89 @@ try {
     database.close()
     return result
   })
-  assert.equal(schema.version, 5)
+  assert.equal(schema.version, 6)
   assert.ok(schema.sessionIndexes.includes("planId"))
   assert.equal(schema.migrated.kind, "plan")
   assert.equal("checked" in schema.migrated.packingItems[0], false)
+  const v3Model = await page.evaluate(async () => {
+    const request = indexedDB.open("asset-tracker-db")
+    const database = await new Promise((resolveOpen) => (request.onsuccess = () => resolveOpen(request.result)))
+    const transaction = database.transaction(["homeSections", "spaceNodes"])
+    const readAll = (store) =>
+      new Promise((resolveRead) => {
+        const get = transaction.objectStore(store).getAll()
+        get.onsuccess = () => resolveRead(get.result)
+      })
+    const [sections, nodes] = await Promise.all([readAll("homeSections"), readAll("spaceNodes")])
+    database.close()
+    return { sections, nodes }
+  })
+  assert.equal(v3Model.sections.length, 3)
+  assert.ok(v3Model.nodes.some((node) => node.id === "room-fixture" && node.kind === "area"))
+  assert.ok(v3Model.nodes.some((node) => node.id === "bag-fixture" && node.mobility === "mobile"))
+
+  await page.getByRole("button", { name: "＋ 新增分区", exact: true }).click()
+  await page.getByText("分区管理", { exact: true }).waitFor()
+  await page.getByText("我的包包", { exact: true }).last().click()
+  await page.getByText("默认分区不可删除", { exact: true }).first().waitFor()
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
+
+  await page.getByRole("button", { name: "物品", exact: true }).first().click()
+  await page.getByLabel("物品排序方式").selectOption("value")
+  assert.equal(await page.getByLabel("物品排序方式").inputValue(), "value")
+  await page.screenshot({ path: resolve(outputDirectory, "item-list-sorted-v3-iphone.png"), fullPage: true })
+  await page.getByRole("button", { name: "空间", exact: true }).click()
 
   await page.getByRole("button", { name: "快捷添加" }).click()
   await page.getByRole("button", { name: /添加物品/ }).click()
-  await page.getByPlaceholder("物品名称").fill("MVP 测试护照")
-  await page.locator("select").nth(1).selectOption("room-fixture")
-  await page.locator("select").nth(2).selectOption("bag-fixture")
-  await page.getByRole("button", { name: "添加", exact: true }).last().click()
+  await page.getByRole("button", { name: "切换为逐步添加" }).click()
+  await page.getByText("逐步添加物品", { exact: true }).waitFor()
+  await page.getByRole("button", { name: "1 基本", exact: true }).waitFor()
+  await page.getByRole("button", { name: "取消", exact: true }).click()
+
+  await page.getByRole("button", { name: "快捷添加" }).click()
+  await page.getByRole("button", { name: /添加物品/ }).click()
+  await page.getByText("快速添加物品", { exact: true }).waitFor()
+  const currencyBox = await page.getByLabel("币种").boundingBox()
+  const priceBox = await page.getByLabel("购入价金额").boundingBox()
+  assert.ok(currencyBox && priceBox)
+  assert.ok(priceBox.width > 150)
+  assert.ok(currencyBox.x + currencyBox.width < priceBox.x)
+  await page.getByLabel("购入价金额").scrollIntoViewIfNeeded()
+  await page.screenshot({ path: resolve(outputDirectory, "item-add-v3-iphone.png"), fullPage: true })
+  await page.getByPlaceholder("例如：通勤背包").fill("MVP 测试护照")
+  await page.getByRole("button", { name: "证件", exact: true }).click()
+  await page.getByLabel("当前空间 / 容器").selectOption("bag-fixture")
+  await page.getByLabel("常驻 / 归位位置").selectOption("room-fixture")
+  await page.getByRole("button", { name: "保存", exact: true }).click()
   await page.waitForURL("**/#/item/**")
   await page.reload({ waitUntil: "networkidle" })
   await page.getByText("MVP 测试护照", { exact: true }).waitFor()
+  await page.getByText(/ID · AT-/).waitFor()
+  await page.screenshot({ path: resolve(outputDirectory, "item-profile-v3-iphone.png"), fullPage: true })
+
+  await page.getByRole("button", { name: "编辑", exact: true }).click()
+  await page.getByText("完整档案编辑", { exact: true }).waitFor()
+  await page.getByText("估值规则", { exact: true }).waitFor({ state: "attached" })
+  await page.waitForFunction(() => {
+    const values = [...document.querySelectorAll("input")].map((input) => input.value)
+    return ["产品属性", "财务信息", "维护属性"].every((value) => values.includes(value))
+  })
+  await page.getByRole("button", { name: "＋ 新增自定义属性组", exact: true }).click()
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("input")].some((input) => input.value === "自定义属性组 1"),
+  )
+  await page.getByRole("button", { name: "取消", exact: true }).click()
+
+  await page.getByRole("button").filter({ hasText: "当前所在" }).click()
+  await page.waitForURL("**/#/spaces/bag-fixture")
+  await page.getByText("我的包包 / 测试背包", { exact: true }).waitFor()
+  await page.getByText("测试背包", { exact: true }).first().waitFor()
+  await page.screenshot({ path: resolve(outputDirectory, "space-detail-v3-iphone.png"), fullPage: true })
+  await page.getByRole("button", { name: "核对", exact: true }).click()
+  await page.getByTestId("space-check").getByRole("button", { name: "核对 MVP 测试护照" }).click()
+  await page.getByRole("button", { name: "完成本次核对" }).click()
+  await page.getByRole("button", { name: "物品", exact: true }).click()
 
   await page.getByRole("button", { name: "快捷添加" }).click()
   await page.getByRole("button", { name: /新建行程/ }).click()
@@ -144,9 +215,10 @@ try {
   const backupPath = resolve(outputDirectory, "backup.json")
   await download.saveAs(backupPath)
   const backup = JSON.parse(await readFile(backupPath, "utf8"))
-  assert.equal(backup.version, 2)
-  assert.equal(backup.manifest.stores.length, 9)
+  assert.equal(backup.version, 3)
+  assert.equal(backup.manifest.stores.length, 12)
   assert.ok(backup.manifest.counts.checkSessions >= 1)
+  assert.equal(backup.manifest.counts.homeSections, 3)
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -157,7 +229,7 @@ try {
     runtimeErrors.filter((message) => !message.includes("net::ERR_FAILED")),
     [],
   )
-  console.log("Single-user MVP smoke passed: DB v4→v5, item, plan check session, four tabs, backup v2")
+  console.log("Single-user MVP smoke passed: DB v4→v6, item v3, plan check session, four tabs, backup v3")
 } finally {
   await browser.close()
 }

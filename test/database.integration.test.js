@@ -59,11 +59,25 @@ test("upgrades v4 plans, separates check sessions and completes a backup round-t
   const databaseModule = await import("../src/services/db.js")
   const backupModule = await import("../src/services/backupService.js")
   const database = await databaseModule.getDb()
-  assert.equal(database.version, 5)
+  assert.equal(database.version, 6)
   assert.ok(database.transaction("activities").objectStore("activities").indexNames.contains("startDate"))
   assert.ok(database.transaction("activityItems").objectStore("activityItems").indexNames.contains("activityId"))
   assert.ok(database.transaction("checkSessions").objectStore("checkSessions").indexNames.contains("planId"))
+  assert.ok(database.transaction("spaceNodes").objectStore("spaceNodes").indexNames.contains("parentId"))
+  assert.ok(database.transaction("homeSections").objectStore("homeSections").indexNames.contains("sortOrder"))
   assert.equal((await databaseModule.getAll("items")).length, 1)
+  const migratedItem = (await databaseModule.getAll("items"))[0]
+  assert.equal(migratedItem.modelVersion, 3)
+  assert.equal(migratedItem.locationNodeId, "bag-1")
+  assert.equal(migratedItem.homeLocationNodeId, "room-1")
+  assert.match(migratedItem.itemCode, /^AT-/)
+  assert.equal((await databaseModule.getAll("homeSections")).length, 3)
+  assert.ok((await databaseModule.getAll("spaceNodes")).some((node) => node.id === "room-1" && node.kind === "area"))
+  assert.ok(
+    (await databaseModule.getAll("spaceNodes")).some(
+      (node) => node.id === "bag-1" && node.kind === "container" && node.mobility === "mobile",
+    ),
+  )
   const migratedPlan = (await databaseModule.getAll("activities"))[0]
   assert.equal(migratedPlan.kind, "plan")
   assert.ok(migratedPlan.packingItems[0].id)
@@ -83,12 +97,14 @@ test("upgrades v4 plans, separates check sessions and completes a backup round-t
   assert.equal(backup.manifest.counts.items, 1)
   assert.equal(backup.manifest.counts.activities, 1)
   assert.equal(backup.manifest.counts.checkSessions, 1)
+  assert.equal(backup.manifest.counts.homeSections, 3)
   assert.ok("asset-guard-custom-types" in backup.data.localStorage)
 
   await backupModule.clearBusinessData()
   assert.equal((await databaseModule.getAll("items")).length, 0)
   await backupModule.restoreBackup(backup, { mode: "replace" })
   assert.equal((await databaseModule.getAll("items"))[0].name, "护照")
+  assert.equal((await databaseModule.getAll("items"))[0].modelVersion, 3)
   assert.equal((await databaseModule.getAll("checkSessions"))[0].planId, "trip-1")
   assert.equal(JSON.parse(localStorage.getItem("asset-guard-custom-types"))[0].name, "会议")
   await databaseModule.closeDb()
