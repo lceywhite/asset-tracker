@@ -27,7 +27,7 @@ Windows PowerShell 若限制执行 `npm.ps1`，可将 `npm` 改为 `npm.cmd`。
 
 - Vue 3、Vite、Vue Router、Pinia、Tailwind CSS
 - Capacitor 8 + Swift Package Manager 原生 iOS 容器
-- IndexedDB v6 保存物品档案 v3、分区、空间树、布局、位置、行程与独立核对记录
+- IndexedDB v7 保存物品档案 v3、分区、空间树、布局、位置、行程 v2 与独立核对记录
 - JSON 备份 v3 覆盖 12 个数据表和已知本地偏好，并兼容 v1/v2 备份
 - 原生分享、文件写入、触觉反馈、状态栏和启动屏插件
 

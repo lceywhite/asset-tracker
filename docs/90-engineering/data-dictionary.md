@@ -1,23 +1,23 @@
 # 单人 MVP 数据字典
 
-数据库名称为 `asset-tracker-db`，当前 schema 版本为 6。
+数据库名称为 `asset-tracker-db`，当前 schema 版本为 7。
 
 ## IndexedDB 数据表
 
-| 存储            | 主要索引                                          | 当前用途                     | 说明                                        |
-| --------------- | ------------------------------------------------- | ---------------------------- | ------------------------------------------- |
-| items           | name/category/status/tags/itemCode/locationNodeId | 物品档案 v3                  | 保留 roomId、bagId、value、photo 兼容旧页面 |
-| homeSections    | key/sortOrder                                     | 物品主页分区                 | 默认三个分区不可删除，自定义分区可管理      |
-| spaceNodes      | sectionId/parentId/kind/mobility                  | 房屋、车辆、区域和各类容器   | 通用父子树，不向用户显示 L0/L1/L2           |
-| spaceLayouts    | nodeId/sortOrder                                  | 空间的多套布局与下级节点位置 | 只保存当前空间的直接下级                    |
-| rooms           | 唯一 name                                         | 旧常驻位置                   | 兼容旧页面，已迁移为 spaceNodes             |
-| bags            | 唯一 name                                         | 旧移动容器                   | 兼容旧页面，已迁移为 spaceNodes             |
-| locationRecords | itemId/timestamp/fromNodeId/toNodeId              | 物品位置变动历史             | 包含来源、目标、原因和备注                  |
-| activities      | startDate/status                                  | 正式行程（Plan）及稳定条目   | 内部保留旧表名以降低迁移风险                |
-| checkSessions   | planId/startedAt/status                           | 每次出发或返程核对           | 结果按 PlanEntry id 保存                    |
-| activityItems   | activityId                                        | 旧重复行程条目               | 仅作迁移兼容，不再写入                      |
-| checklists      | type/status                                       | 未接入正式路由的旧清单       | 后续迁移或删除                              |
-| templates       | id                                                | 旧清单模板                   | 后续转为行程模板                            |
+| 存储            | 主要索引                                          | 当前用途                      | 说明                                        |
+| --------------- | ------------------------------------------------- | ----------------------------- | ------------------------------------------- |
+| items           | name/category/status/tags/itemCode/locationNodeId | 物品档案 v3                   | 保留 roomId、bagId、value、photo 兼容旧页面 |
+| homeSections    | key/sortOrder                                     | 物品主页分区                  | 默认三个分区不可删除，自定义分区可管理      |
+| spaceNodes      | sectionId/parentId/kind/mobility                  | 房屋、车辆、区域和各类容器    | 通用父子树，不向用户显示 L0/L1/L2           |
+| spaceLayouts    | nodeId/sortOrder                                  | 空间的多套布局与下级节点位置  | 只保存当前空间的直接下级                    |
+| rooms           | 唯一 name                                         | 旧常驻位置                    | 兼容旧页面，已迁移为 spaceNodes             |
+| bags            | 唯一 name                                         | 旧移动容器                    | 兼容旧页面，已迁移为 spaceNodes             |
+| locationRecords | itemId/timestamp/fromNodeId/toNodeId              | 物品位置变动历史              | 包含来源、目标、原因和备注                  |
+| activities      | startDate/departureAt/returnAt/type/status        | 正式行程（Plan v2）及稳定条目 | 内部保留旧表名和 startDate 兼容旧页面       |
+| checkSessions   | planId/kind/startedAt/updatedAt/status            | 每次出发、途中或结束核对      | 四态结果按 PlanEntry id 保存                |
+| activityItems   | activityId                                        | 旧重复行程条目                | 仅作迁移兼容，不再写入                      |
+| checklists      | type/status                                       | 未接入正式路由的旧清单        | 后续迁移或删除                              |
+| templates       | id                                                | 旧清单模板                    | 后续转为行程模板                            |
 
 ## items 物品档案 v3
 
@@ -66,12 +66,52 @@
 
 每个节点可以有多条布局记录。`placements` 保存直接下级节点的 `nodeId`、x/y、宽高和排序。布局用于表达相对位置，不作为建筑 CAD 数据。
 
+## activities 行程档案 v2
+
+| 字段                                         | 类型            | 说明                                                       |
+| -------------------------------------------- | --------------- | ---------------------------------------------------------- |
+| id / modelVersion                            | string/2        | 系统主键与当前模型版本                                     |
+| title / type / status                        | string          | 名称、类型和 draft/planned/in_progress/completed/cancelled |
+| tripMode                                     | string          | `one_way` 或 `round_trip`                                  |
+| departureAt / returnAt                       | string          | 出发和结束/返程日期时间；单程不保存 returnAt               |
+| origin / destination / transportMode         | string          | 起点、终点和出行方式                                       |
+| containerRefs                                | object[]        | 移动容器引用、名称/图标快照、排序和迁移状态                |
+| packingItems                                 | object[]        | 本次行程携带条目，不改变物品真实位置                       |
+| packingItems[].id                            | string          | 本次行程稳定条目 ID，核对结果引用它                        |
+| packingItems[].itemId/containerId            | string          | 物品库与移动容器稳定引用                                   |
+| packingItems[].nameSnapshot/categorySnapshot | string          | 历史阅读快照                                               |
+| packingItems[].starred                       | boolean         | 是否重点关注；提醒时间读取全局偏好                         |
+| packingItems[].migrationPending              | boolean         | 旧数据缺少可靠物品或容器引用，等待用户整理                 |
+| notes / infoCards                            | string/object[] | 备注及独立通用信息卡片                                     |
+| createdAt / updatedAt                        | ISO string      | 创建和更新时间                                             |
+
+`startDate`、`endDate`、`startTime`、`endTime`、`description`、`bagIds` 和条目中的旧名称字段仅在行程旧界面清理前保留兼容读取。旧无容器条目进入虚拟“待整理物品”分组，不因升级被删除。
+
+## checkSessions 核对记录 v2
+
+| 字段                | 类型       | 说明                                           |
+| ------------------- | ---------- | ---------------------------------------------- |
+| id / planId         | string     | 核对记录主键及所属行程                         |
+| modelVersion        | number     | 当前固定为 2                                   |
+| kind                | string     | `departure`、`anytime` 或 `end`                |
+| status              | string     | `in_progress` 或 `completed`                   |
+| results[entryId]    | object     | 以携带条目 ID 为键保存本次结果                 |
+| results[].state     | string     | `pending`、`confirmed`、`missing` 或 `skipped` |
+| startedAt/updatedAt | ISO string | 开始和最近更新时间                             |
+| completedAt         | ISO string | 完成时间，未完成时为空                         |
+
+旧 `return` 核对会映射为 `end`；旧布尔结果按是否确认和是否曾操作转换为已确认、未找到或待核对。
+
+## 行程提醒偏好
+
+本地键为 `asset-tracker-trip-preferences`。出发和结束提醒均可设为关闭或“前一天晚上”，默认时间为 21:00。当前只保存并展示星标提醒规则，尚未接入系统推送。
+
 ## 备份
 
-备份格式为 v3，覆盖上述 12 个 store，以及本地个人资料、旧空间数据、分类、自定义行程类型和物品页视图偏好。
+备份格式为 v3，覆盖上述 12 个 store，以及本地个人资料、旧空间数据、分类、自定义行程类型、物品页视图偏好和行程提醒偏好。
 
 - v1 备份：没有 `checkSessions` 和 v3 空间表；
 - v2 备份：没有 v3 空间表；
 - v3 备份：完整保存物品档案 v3、分区、空间树和布局。
 
-恢复旧备份后会自动补齐 v3 默认分区、空间节点和物品字段。
+恢复旧备份后会自动补齐 v3 默认分区、空间节点和物品字段，并把行程与核对记录统一迁移到各自的 modelVersion 2。

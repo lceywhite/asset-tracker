@@ -13,4 +13,4 @@
 - [已否决：完整旅行档案设计](references/rejected-complete-travel-design.md)
 - [已否决：完整旅行档案原型](references/rejected-complete-travel-timeline.html)
 
-当前状态：设计已确认，准备进入工程接入。正式行程页面和数据模型仍是旧版；代码开发必须先按接入计划完成数据迁移和测试，再替换界面。
+当前状态：设计已确认；Plan v2、CheckSession v2、IndexedDB v7 迁移、服务、偏好和自动化测试已经接入。正式行程页面仍是旧版，当前按接入计划继续替换时间轴主页、建档、携带清单、档案和核对界面。
