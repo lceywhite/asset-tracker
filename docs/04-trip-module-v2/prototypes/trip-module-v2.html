@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>物品守护 · 行程模块 v2 原型</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f4ef;
+        --card: #ffffff;
+        --text: #17191d;
+        --muted: #838997;
+        --line: #e3e4e8;
+        --soft: #f4f6f9;
+        --blue: #2f67ed;
+        --blue-soft: #edf3ff;
+        --green: #2f9e67;
+        --green-soft: #eaf8f0;
+        --amber: #b97814;
+        --amber-soft: #fff5df;
+        --red: #d64b54;
+        --red-soft: #fff0f1;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--text);
+        background: #e9ebef;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      .stage {
+        min-height: 100vh;
+        padding: 24px 16px 42px;
+      }
+      .prototype-nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        max-width: 760px;
+        margin: 0 auto 16px;
+      }
+      .prototype-nav button {
+        border: 1px solid #cfd3da;
+        border-radius: 999px;
+        padding: 8px 14px;
+        color: #5f6673;
+        background: rgba(255, 255, 255, 0.76);
+      }
+      .prototype-nav button.active {
+        border-color: var(--blue);
+        color: white;
+        background: var(--blue);
+      }
+      .phone {
+        position: relative;
+        width: min(100%, 390px);
+        height: min(844px, calc(100vh - 95px));
+        min-height: 680px;
+        margin: 0 auto;
+        overflow: hidden;
+        border-radius: 30px;
+        background: var(--bg);
+        box-shadow: 0 24px 75px rgba(20, 31, 55, 0.2);
+      }
+      .screen {
+        display: none;
+        height: 100%;
+        flex-direction: column;
+      }
+      .screen.active {
+        display: flex;
+      }
+      .topbar {
+        display: grid;
+        grid-template-columns: 58px 1fr 58px;
+        align-items: center;
+        min-height: 57px;
+        padding: 8px 15px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.96);
+      }
+      .topbar h1,
+      .topbar p {
+        margin: 0;
+        text-align: center;
+      }
+      .topbar h1 {
+        font-size: 16px;
+      }
+      .topbar p {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .link {
+        border: 0;
+        padding: 6px 0;
+        color: var(--blue);
+        background: transparent;
+      }
+      .link.left {
+        color: #606673;
+        text-align: left;
+      }
+      .link.right {
+        text-align: right;
+      }
+      .scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 16px 104px;
+      }
+      .section-title {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 20px 2px 9px;
+      }
+      .section-title:first-child {
+        margin-top: 2px;
+      }
+      .section-title h2,
+      .section-title p {
+        margin: 0;
+      }
+      .section-title h2 {
+        font-size: 16px;
+      }
+      .section-title p,
+      .caption {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--card);
+        box-shadow: 0 1px 2px rgba(20, 31, 55, 0.025);
+      }
+      .home-tools {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        border-radius: 13px;
+        padding: 0 12px;
+        color: var(--muted);
+        background: #ebecef;
+      }
+      .search input {
+        min-width: 0;
+        width: 100%;
+        border: 0;
+        outline: 0;
+        color: var(--text);
+        background: transparent;
+      }
+      .segment {
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 12px;
+        background: #ebecef;
+      }
+      .segment button {
+        border: 0;
+        border-radius: 9px;
+        padding: 6px 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 11px;
+      }
+      .segment button.active {
+        color: var(--blue);
+        background: white;
+        box-shadow: 0 1px 4px rgba(20, 31, 55, 0.08);
+      }
+      .today-card {
+        overflow: hidden;
+        padding: 15px;
+        color: white;
+        border: 0;
+        background: linear-gradient(135deg, #356de9, #6b62e8);
+      }
+      .today-card .eyebrow {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.74);
+      }
+      .today-card h2 {
+        margin: 6px 0 3px;
+        font-size: 20px;
+      }
+      .today-card p {
+        margin: 0;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.78);
+      }
+      .today-progress {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        margin-top: 15px;
+      }
+      .progress {
+        height: 7px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: white;
+      }
+      .today-action {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      .today-action button {
+        border: 0;
+        border-radius: 11px;
+        padding: 8px 12px;
+        color: #315fd1;
+        background: white;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .trip-list {
+        display: grid;
+        gap: 9px;
+      }
+      .trip-card {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 50px 1fr auto;
+        gap: 11px;
+        align-items: center;
+        padding: 12px;
+        text-align: left;
+        color: var(--text);
+      }
+      .trip-icon {
+        width: 50px;
+        height: 50px;
+        display: grid;
+        place-items: center;
+        border-radius: 15px;
+        font-size: 23px;
+        background: var(--soft);
+      }
+      .trip-card strong,
+      .trip-card small {
+        display: block;
+      }
+      .trip-card strong {
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+      .trip-card small {
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.5;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 5px 8px;
+        font-size: 9px;
+        white-space: nowrap;
+      }
+      .status.ready {
+        color: var(--green);
+        background: var(--green-soft);
+      }
+      .status.plan {
+        color: var(--blue);
+        background: var(--blue-soft);
+      }
+      .status.done {
+        color: #6f7580;
+        background: #f0f1f3;
+      }
+      .quick-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+      .quick-row button {
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        padding: 12px 5px;
+        color: var(--text);
+        background: white;
+        font-size: 11px;
+      }
+      .quick-row span {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 20px;
+      }
+      .bottom-nav {
+        position: absolute;
+        z-index: 3;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr 62px 1fr 1fr;
+        align-items: end;
+        min-height: 68px;
+        padding: 7px 10px 8px;
+        border-top: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.97);
+      }
+      .bottom-nav button {
+        border: 0;
+        padding: 3px;
+        color: #8b909a;
+        background: transparent;
+        font-size: 10px;
+      }
+      .bottom-nav button span {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 19px;
+      }
+      .bottom-nav button.active {
+        color: var(--blue);
+      }
+      .bottom-nav .add {
+        align-self: center;
+        width: 54px;
+        height: 54px;
+        margin-top: -25px;
+        border-radius: 19px;
+        color: white;
+        background: var(--blue);
+        box-shadow: 0 10px 26px rgba(47, 103, 237, 0.34);
+        font-size: 28px;
+      }
+      .switch-flow {
+        width: 100%;
+        margin-bottom: 12px;
+        border: 0;
+        border-radius: 13px;
+        padding: 10px;
+        color: var(--blue);
+        background: var(--blue-soft);
+        font-size: 12px;
+      }
+      .form-card {
+        margin-bottom: 10px;
+        padding: 14px;
+      }
+      .form-card h2 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+      .field {
+        display: grid;
+        gap: 5px;
+        margin-bottom: 11px;
+      }
+      .field:last-child {
+        margin-bottom: 0;
+      }
+      .field label {
+        color: #676e7b;
+        font-size: 11px;
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 10px 11px;
+        outline: 0;
+        color: var(--text);
+        background: white;
+      }
+      .field textarea {
+        min-height: 66px;
+        resize: vertical;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 7px 10px;
+        color: #58606d;
+        background: white;
+        font-size: 11px;
+      }
+      .chip.active {
+        border-color: var(--blue);
+        color: var(--blue);
+        background: var(--blue-soft);
+      }
+      .packing-summary {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 11px 0;
+        border-top: 1px solid var(--line);
+      }
+      .packing-summary:first-of-type {
+        border-top: 0;
+      }
+      .packing-summary .bag {
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--soft);
+        font-size: 20px;
+      }
+      .packing-summary strong,
+      .packing-summary small {
+        display: block;
+      }
+      .packing-summary strong {
+        font-size: 12px;
+      }
+      .packing-summary small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .mini-link {
+        border: 0;
+        color: var(--blue);
+        background: transparent;
+        font-size: 10px;
+      }
+      .hint {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .primary {
+        width: 100%;
+        border: 0;
+        border-radius: 14px;
+        padding: 13px;
+        color: white;
+        background: var(--blue);
+        font-weight: 650;
+      }
+      .stepper {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 5px;
+        margin: 2px 0 13px;
+      }
+      .stepper button {
+        border: 0;
+        border-bottom: 2px solid #d7dae0;
+        padding: 8px 2px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 10px;
+      }
+      .stepper button.active {
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .detail-hero {
+        margin-bottom: 11px;
+        padding: 15px;
+      }
+      .hero-line {
+        display: grid;
+        grid-template-columns: 54px 1fr auto;
+        gap: 11px;
+        align-items: center;
+      }
+      .hero-line .trip-icon {
+        width: 54px;
+        height: 54px;
+      }
+      .hero-line h2,
+      .hero-line p {
+        margin: 0;
+      }
+      .hero-line h2 {
+        font-size: 18px;
+      }
+      .hero-line p {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .readiness {
+        margin-top: 13px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .readiness-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+      }
+      .readiness .progress {
+        margin-top: 7px;
+        background: #e9ecf1;
+      }
+      .readiness .progress i {
+        background: var(--green);
+      }
+      .timeline {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        margin-bottom: 11px;
+        padding: 12px;
+      }
+      .timeline div {
+        position: relative;
+        text-align: center;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .timeline div::before {
+        content: "";
+        display: block;
+        width: 10px;
+        height: 10px;
+        margin: 0 auto 6px;
+        border: 3px solid white;
+        border-radius: 50%;
+        background: #c8ccd3;
+        box-shadow: 0 0 0 1px #c8ccd3;
+      }
+      .timeline div.done::before {
+        background: var(--green);
+        box-shadow: 0 0 0 1px var(--green);
+      }
+      .timeline div.current {
+        color: var(--blue);
+        font-weight: 650;
+      }
+      .timeline div.current::before {
+        background: var(--blue);
+        box-shadow: 0 0 0 1px var(--blue);
+      }
+      .check-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-bottom: 11px;
+      }
+      .check-actions button {
+        min-height: 96px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 13px;
+        text-align: left;
+        color: var(--text);
+        background: white;
+      }
+      .check-actions button.primary-action {
+        border-color: var(--blue);
+        color: white;
+        background: var(--blue);
+      }
+      .check-actions span {
+        display: block;
+        margin-bottom: 9px;
+        font-size: 22px;
+      }
+      .check-actions strong,
+      .check-actions small {
+        display: block;
+      }
+      .check-actions small {
+        margin-top: 4px;
+        color: inherit;
+        opacity: 0.68;
+        font-size: 9px;
+      }
+      .pack-group {
+        overflow: hidden;
+        margin-bottom: 9px;
+      }
+      .pack-head {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: var(--soft);
+        font-size: 11px;
+      }
+      .pack-item {
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+      }
+      .pack-item .thumb {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        background: var(--soft);
+        font-size: 18px;
+      }
+      .pack-item strong,
+      .pack-item small {
+        display: block;
+      }
+      .pack-item strong {
+        font-size: 12px;
+      }
+      .pack-item small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .return-tag {
+        border-radius: 999px;
+        padding: 5px 7px;
+        color: var(--amber);
+        background: var(--amber-soft);
+        font-size: 8px;
+      }
+      .secondary-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+        margin: 14px 0;
+      }
+      .secondary-actions button {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 3px;
+        color: #656c78;
+        background: white;
+        font-size: 10px;
+      }
+      .check-screen {
+        background: white;
+      }
+      .check-top {
+        display: grid;
+        grid-template-columns: 52px 1fr 44px;
+        gap: 10px;
+        align-items: center;
+        padding: 16px 16px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .check-top button {
+        border: 0;
+        padding: 4px 0;
+        color: #666d79;
+        background: transparent;
+        text-align: left;
+      }
+      .check-top span {
+        color: var(--muted);
+        font-size: 10px;
+        text-align: right;
+      }
+      .check-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+      }
+      .check-type {
+        color: var(--blue);
+        font-size: 11px;
+        font-weight: 650;
+      }
+      .check-photo {
+        width: 142px;
+        height: 142px;
+        display: grid;
+        place-items: center;
+        margin: 26px 0 20px;
+        border-radius: 34px;
+        background: linear-gradient(145deg, #f1f4f9, #e5ecf8);
+        font-size: 72px;
+      }
+      .check-body h2 {
+        margin: 0;
+        font-size: 25px;
+      }
+      .check-body p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .check-buttons {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 9px;
+        margin-top: 35px;
+      }
+      .check-buttons button {
+        min-height: 74px;
+        border: 0;
+        border-radius: 20px;
+        font-size: 11px;
+      }
+      .check-buttons button span {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 23px;
+      }
+      .missing {
+        color: var(--red);
+        background: var(--red-soft);
+      }
+      .skip {
+        color: #777d88;
+        background: #f0f1f3;
+      }
+      .confirm {
+        color: var(--green);
+        background: var(--green-soft);
+      }
+      .previous {
+        margin-top: 23px;
+        border: 0;
+        color: var(--muted);
+        background: transparent;
+      }
+      .summary-body {
+        justify-content: flex-start;
+        overflow-y: auto;
+        padding-top: 38px;
+      }
+      .summary-mark {
+        width: 72px;
+        height: 72px;
+        display: grid;
+        place-items: center;
+        border-radius: 25px;
+        color: var(--green);
+        background: var(--green-soft);
+        font-size: 34px;
+      }
+      .summary-body h2 {
+        margin-top: 15px;
+      }
+      .summary-stats {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+        margin: 22px 0 13px;
+      }
+      .summary-stats div {
+        border-radius: 14px;
+        padding: 12px 4px;
+        background: var(--soft);
+      }
+      .summary-stats strong,
+      .summary-stats small {
+        display: block;
+      }
+      .summary-stats strong {
+        font-size: 20px;
+      }
+      .summary-stats small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .issue-list {
+        width: 100%;
+        text-align: left;
+      }
+      .issue-list h3 {
+        font-size: 13px;
+      }
+      .issue {
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        gap: 9px;
+        align-items: center;
+        margin-bottom: 7px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+      }
+      .issue span:first-child {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--soft);
+      }
+      .issue strong,
+      .issue small {
+        display: block;
+      }
+      .issue strong {
+        font-size: 11px;
+      }
+      .issue small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .issue em {
+        color: var(--red);
+        font-size: 9px;
+        font-style: normal;
+      }
+      .summary-body .primary {
+        margin-top: 15px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 430px) {
+        .stage {
+          padding: 0;
+        }
+        .prototype-nav {
+          position: fixed;
+          z-index: 20;
+          left: 8px;
+          right: 8px;
+          bottom: 8px;
+          margin: 0;
+          padding: 6px;
+          border-radius: 16px;
+          background: rgba(24, 28, 36, 0.86);
+          backdrop-filter: blur(12px);
+        }
+        .prototype-nav button {
+          padding: 6px 9px;
+          color: #d7dae0;
+          border-color: #555b66;
+          background: transparent;
+          font-size: 10px;
+        }
+        .phone {
+          width: 100%;
+          height: 100vh;
+          min-height: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+        .scroll {
+          padding-bottom: 126px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <nav class="prototype-nav" aria-label="原型页面切换">
+        <button class="active" data-screen-target="home">行程主页</button>
+        <button data-screen-target="create">新建行程</button>
+        <button data-screen-target="detail">行程详情</button>
+        <button data-screen-target="check">出发核对</button>
+        <button data-screen-target="summary">核对结果</button>
+      </nav>
+
+      <main class="phone">
+        <section class="screen active" data-screen="home">
+          <header class="topbar">
+            <span></span>
+            <div>
+              <h1>行程</h1>
+              <p>计划、携带与核对</p>
+            </div>
+            <button class="link right" data-go="create">＋ 新建</button>
+          </header>
+          <div class="scroll">
+            <div class="home-tools">
+              <label class="search">⌕<input placeholder="搜索行程或目的地" /></label>
+              <div class="segment"><button class="active">列表</button><button>日历</button></div>
+            </div>
+            <article class="card today-card">
+              <span class="eyebrow">今天 · 7月22日</span>
+              <h2>下班通勤</h2>
+              <p>18:30 出发 · 公司 → 家</p>
+              <div class="today-progress">
+                <div class="progress"><i style="width: 78%"></i></div>
+                <strong>7 / 9</strong>
+              </div>
+              <div class="today-action">
+                <span class="caption" style="color: rgba(255, 255, 255, 0.74)">还有 2 件尚未确认</span
+                ><button data-go="check">继续出发核对</button>
+              </div>
+            </article>
+
+            <div class="section-title">
+              <div>
+                <h2>即将开始</h2>
+                <p>未来 30 天</p>
+              </div>
+              <button class="link">筛选 ▾</button>
+            </div>
+            <div class="trip-list">
+              <button class="card trip-card" data-go="detail">
+                <span class="trip-icon">🧳</span
+                ><span
+                  ><strong>杭州周末旅行</strong><small>7月25日–27日 · 杭州<br />3 个容器 · 15 项清单</small></span
+                ><span class="status plan">准备中</span>
+              </button>
+              <button class="card trip-card">
+                <span class="trip-icon">🚄</span
+                ><span
+                  ><strong>苏州客户拜访</strong><small>8月3日 · 苏州<br />通勤背包 · 8 项清单</small></span
+                ><span class="status ready">已就绪</span>
+              </button>
+            </div>
+
+            <div class="section-title">
+              <div>
+                <h2>快速开始</h2>
+                <p>复用高频计划</p>
+              </div>
+            </div>
+            <div class="quick-row">
+              <button><span>↻</span>复制上次行程</button><button><span>🚶</span>日常通勤模板</button
+              ><button><span>＋</span>创建新模板</button>
+            </div>
+
+            <div class="section-title">
+              <div>
+                <h2>最近完成</h2>
+                <p>核对记录可追溯</p>
+              </div>
+              <button class="link">查看全部</button>
+            </div>
+            <button class="card trip-card">
+              <span class="trip-icon">✈️</span
+              ><span
+                ><strong>北京三日出差</strong><small>7月12日–14日 · 已完成<br />出发 12/12 · 返程 11/12</small></span
+              ><span class="status done">已归档</span>
+            </button>
+          </div>
+          <nav class="bottom-nav">
+            <button><span>▣</span>物品</button><button class="active"><span>▤</span>行程</button
+            ><button class="add" data-go="create">＋</button><button><span>○</span>社区</button
+            ><button><span>◉</span>我的</button>
+          </nav>
+        </section>
+
+        <section class="screen" data-screen="create">
+          <header class="topbar">
+            <button class="link left" data-go="home">取消</button>
+            <div>
+              <h1 data-create-title>快速新建</h1>
+              <p>熟练用户一页完成</p>
+            </div>
+            <button class="link right" data-go="detail">保存</button>
+          </header>
+          <div class="scroll">
+            <button class="switch-flow" data-toggle-flow>切换为逐步创建 →</button>
+            <div data-quick-flow>
+              <section class="card form-card">
+                <h2>基本信息</h2>
+                <div class="field"><label>行程名称 *</label><input value="杭州周末旅行" /></div>
+                <div class="chips">
+                  <button class="chip active">🧳 旅行</button><button class="chip">🚶 日常</button
+                  ><button class="chip">💼 出差</button><button class="chip">📦 搬家</button
+                  ><button class="chip">＋ 自定义</button>
+                </div>
+              </section>
+              <section class="card form-card">
+                <h2>时间与目的地</h2>
+                <div class="form-grid">
+                  <div class="field"><label>开始日期</label><input type="date" value="2026-07-25" /></div>
+                  <div class="field"><label>结束日期</label><input type="date" value="2026-07-27" /></div>
+                </div>
+                <div class="field"><label>目的地</label><input value="杭州 · 西湖区" /></div>
+                <div class="field"><label>备注</label><textarea>周五下班后出发；周日傍晚返程。</textarea></div>
+              </section>
+              <section class="card form-card">
+                <div style="display: flex; justify-content: space-between; align-items: center">
+                  <h2 style="margin: 0">携带清单 · 15</h2>
+                  <button class="link">选择物品</button>
+                </div>
+                <div class="packing-summary">
+                  <span class="bag">🎒</span><span><strong>通勤背包</strong><small>电脑、电源、证件等 7 项</small></span
+                  ><button class="mini-link">编辑</button>
+                </div>
+                <div class="packing-summary">
+                  <span class="bag">🧳</span
+                  ><span><strong>20 寸行李箱</strong><small>衣物、洗漱用品等 6 项</small></span
+                  ><button class="mini-link">编辑</button>
+                </div>
+                <div class="packing-summary">
+                  <span class="bag">📋</span><span><strong>临时清单</strong><small>伴手礼、酒店确认单 2 项</small></span
+                  ><button class="mini-link">编辑</button>
+                </div>
+                <p class="hint">这里的容器只用于本次行程分组，不会改变物品档案中的真实位置。</p>
+              </section>
+              <section class="card form-card">
+                <h2>返程核对</h2>
+                <div class="chips">
+                  <button class="chip active">默认全部带回</button><button class="chip">逐项设置</button>
+                </div>
+                <p class="hint">消耗品、赠送物品和临时项可标记为“不需带回”。</p>
+              </section>
+              <button class="primary" data-go="detail">创建行程</button>
+            </div>
+            <div data-guided-flow hidden>
+              <div class="stepper">
+                <button class="active">1 基本</button><button>2 时间</button><button>3 清单</button
+                ><button>4 确认</button>
+              </div>
+              <section class="card form-card">
+                <h2>先给行程一个清晰名称</h2>
+                <div class="field"><label>行程名称 *</label><input value="杭州周末旅行" /></div>
+                <div class="field">
+                  <label>这是什么类型的行程？</label>
+                  <div class="chips">
+                    <button class="chip active">🧳 旅行</button><button class="chip">🚶 日常</button
+                    ><button class="chip">💼 出差</button><button class="chip">📦 搬家</button>
+                  </div>
+                </div>
+              </section>
+              <button class="primary">下一步：时间与目的地</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="detail">
+          <header class="topbar">
+            <button class="link left" data-go="home">‹ 返回</button>
+            <div>
+              <h1>行程详情</h1>
+              <p>杭州周末旅行</p>
+            </div>
+            <button class="link right">编辑</button>
+          </header>
+          <div class="scroll">
+            <section class="card detail-hero">
+              <div class="hero-line">
+                <span class="trip-icon">🧳</span
+                ><span
+                  ><h2>杭州周末旅行</h2>
+                  <p>7月25日–27日 · 杭州西湖区</p></span
+                ><span class="status plan">准备中</span>
+              </div>
+              <div class="readiness">
+                <div class="readiness-head"><span>出发准备度</span><strong>12 / 15</strong></div>
+                <div class="progress"><i style="width: 80%"></i></div>
+              </div>
+            </section>
+            <section class="card timeline">
+              <div class="done">已创建<br />7月22日</div>
+              <div class="current">准备中<br />还差3项</div>
+              <div>待出发<br />7月25日</div>
+            </section>
+            <div class="check-actions">
+              <button class="primary-action" data-go="check">
+                <span>🧳</span><strong>出发核对</strong><small>确认 15 项携带物品</small></button
+              ><button><span>🏠</span><strong>返程核对</strong><small>到返程日后开放</small></button>
+            </div>
+            <div class="section-title">
+              <div>
+                <h2>携带清单</h2>
+                <p>3 个分组 · 15 项</p>
+              </div>
+              <button class="link">＋ 添加</button>
+            </div>
+            <section class="card pack-group">
+              <div class="pack-head"><strong>🎒 通勤背包</strong><span>7 项</span></div>
+              <div class="pack-item">
+                <span class="thumb">💻</span><span><strong>MacBook Air</strong><small>电子设备 · 来自书房</small></span
+                ><span class="return-tag">需带回</span>
+              </div>
+              <div class="pack-item">
+                <span class="thumb">🔋</span><span><strong>移动电源</strong><small>电子设备 · 来自通勤背包</small></span
+                ><span class="return-tag">需带回</span>
+              </div>
+              <div class="pack-item">
+                <span class="thumb">🪪</span><span><strong>身份证</strong><small>证件 · 重要</small></span
+                ><span class="return-tag">需带回</span>
+              </div>
+            </section>
+            <section class="card pack-group">
+              <div class="pack-head"><strong>🧳 20 寸行李箱</strong><span>6 项</span></div>
+              <div class="pack-item">
+                <span class="thumb">👕</span><span><strong>换洗衣物 × 2</strong><small>衣物 · 数量项</small></span
+                ><span class="return-tag">需带回</span>
+              </div>
+              <div class="pack-item">
+                <span class="thumb">🧴</span><span><strong>旅行洗漱包</strong><small>日用 · 已装箱</small></span
+                ><span class="return-tag">需带回</span>
+              </div>
+            </section>
+            <section class="card pack-group">
+              <div class="pack-head"><strong>📋 临时清单</strong><span>2 项</span></div>
+              <div class="pack-item">
+                <span class="thumb">🎁</span><span><strong>伴手礼</strong><small>临时项 · 尚未购买</small></span
+                ><span class="status plan">不需带回</span>
+              </div>
+            </section>
+            <div class="secondary-actions">
+              <button>复制行程</button><button>保存为模板</button><button>更多设置</button>
+            </div>
+          </div>
+          <nav class="bottom-nav">
+            <button><span>▣</span>物品</button><button class="active"><span>▤</span>行程</button
+            ><button class="add" data-go="create">＋</button><button><span>○</span>社区</button
+            ><button><span>◉</span>我的</button>
+          </nav>
+        </section>
+
+        <section class="screen check-screen" data-screen="check">
+          <header class="check-top">
+            <button data-go="detail">退出</button>
+            <div class="progress"><i data-check-progress style="width: 47%"></i></div>
+            <span data-check-count>7 / 15</span>
+          </header>
+          <div class="check-body">
+            <div class="check-type">出发核对 · 通勤背包</div>
+            <div class="check-photo" data-check-icon>💻</div>
+            <h2 data-check-name>MacBook Air</h2>
+            <p data-check-meta>电子设备 · 常驻位置：书房</p>
+            <div class="check-buttons">
+              <button class="missing" data-check-result="missing"><span>×</span>未找到</button
+              ><button class="skip" data-check-result="skip"><span>→</span>跳过</button
+              ><button class="confirm" data-check-result="confirmed"><span>✓</span>已确认</button>
+            </div>
+            <button class="previous">‹ 上一个</button>
+          </div>
+        </section>
+
+        <section class="screen check-screen" data-screen="summary">
+          <div class="check-body summary-body">
+            <div class="summary-mark">✓</div>
+            <h2>出发核对完成</h2>
+            <p>杭州周末旅行 · 7月25日 18:42</p>
+            <div class="summary-stats">
+              <div><strong>13</strong><small>已确认</small></div>
+              <div><strong style="color: var(--red)">1</strong><small>未找到</small></div>
+              <div><strong style="color: #777d88">1</strong><small>已跳过</small></div>
+            </div>
+            <div class="issue-list">
+              <h3>需要处理</h3>
+              <div class="issue">
+                <span>☂️</span><span><strong>折叠伞</strong><small>常驻位置：玄关鞋柜</small></span
+                ><em>未找到</em>
+              </div>
+              <div class="issue">
+                <span>🎁</span><span><strong>伴手礼</strong><small>临时项 · 到杭州后购买</small></span
+                ><em style="color: #777d88">已跳过</em>
+              </div>
+            </div>
+            <button class="primary" data-go="detail">返回行程详情</button
+            ><button class="link" style="margin-top: 10px">重新核对未完成项目</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const screens = [...document.querySelectorAll("[data-screen]")]
+      const navButtons = [...document.querySelectorAll("[data-screen-target]")]
+      function showScreen(name) {
+        screens.forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name))
+        navButtons.forEach((button) => button.classList.toggle("active", button.dataset.screenTarget === name))
+      }
+      document
+        .querySelectorAll("[data-go]")
+        .forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.go)))
+      navButtons.forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.screenTarget)))
+      document.querySelectorAll(".segment button").forEach((button) =>
+        button.addEventListener("click", () => {
+          button.parentElement.querySelectorAll("button").forEach((entry) => entry.classList.remove("active"))
+          button.classList.add("active")
+        }),
+      )
+      document
+        .querySelectorAll(".chip")
+        .forEach((button) => button.addEventListener("click", () => button.classList.toggle("active")))
+      const flowToggle = document.querySelector("[data-toggle-flow]")
+      const quickFlow = document.querySelector("[data-quick-flow]")
+      const guidedFlow = document.querySelector("[data-guided-flow]")
+      flowToggle.addEventListener("click", () => {
+        const guided = guidedFlow.hidden
+        guidedFlow.hidden = !guided
+        quickFlow.hidden = guided
+        flowToggle.textContent = guided ? "切换为快速创建 →" : "切换为逐步创建 →"
+        document.querySelector("[data-create-title]").textContent = guided ? "逐步新建" : "快速新建"
+      })
+      const checkItems = [
+        ["💻", "MacBook Air", "电子设备 · 常驻位置：书房"],
+        ["🔋", "移动电源", "电子设备 · 当前位于通勤背包"],
+        ["🪪", "身份证", "证件 · 常驻位置：钱包"],
+        ["☂️", "折叠伞", "日用 · 常驻位置：玄关鞋柜"],
+        ["🎧", "AirPods Pro", "电子设备 · 当前位于书桌"],
+        ["🔌", "USB-C 充电器", "电子设备 · 常驻位置：充电抽屉"],
+        ["📷", "相机", "电子设备 · 常驻位置：防潮柜"],
+        ["👕", "换洗衣物 × 2", "衣物 · 当前位于衣柜"],
+      ]
+      let checkIndex = 0
+      function renderCheck() {
+        const [icon, name, meta] = checkItems[checkIndex]
+        document.querySelector("[data-check-icon]").textContent = icon
+        document.querySelector("[data-check-name]").textContent = name
+        document.querySelector("[data-check-meta]").textContent = meta
+        document.querySelector("[data-check-count]").textContent = `${7 + checkIndex} / 15`
+        document.querySelector("[data-check-progress]").style.width = `${((7 + checkIndex) / 15) * 100}%`
+      }
+      document.querySelectorAll("[data-check-result]").forEach((button) =>
+        button.addEventListener("click", () => {
+          if (checkIndex >= checkItems.length - 1) showScreen("summary")
+          else {
+            checkIndex += 1
+            renderCheck()
+          }
+        }),
+      )
+      document.querySelector(".previous").addEventListener("click", () => {
+        if (checkIndex > 0) {
+          checkIndex -= 1
+          renderCheck()
+        }
+      })
+    </script>
+  </body>
+</html>

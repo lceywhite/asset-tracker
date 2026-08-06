@@ -1,0 +1,2109 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>已否决方案 · 完整旅行档案时间轴</title>
+    <style>
+      :root {
+        --canvas: #e9e7e1;
+        --surface: #f8f6f1;
+        --card: #ffffff;
+        --ink: #1c2421;
+        --muted: #75807b;
+        --line: #dedfd9;
+        --teal: #177f72;
+        --teal-deep: #0e655c;
+        --teal-soft: #e3f0ec;
+        --warm: #d28c57;
+        --warm-soft: #f5e9de;
+        --danger: #b75b50;
+        --danger-soft: #f6e7e4;
+        --shadow: 0 18px 48px rgba(47, 58, 53, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+        color: var(--ink);
+        background: var(--canvas);
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 78px 24px 24px;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .prototype-nav {
+        position: fixed;
+        z-index: 50;
+        top: 16px;
+        left: 50%;
+        display: flex;
+        max-width: calc(100vw - 24px);
+        gap: 5px;
+        padding: 6px;
+        overflow-x: auto;
+        border: 1px solid rgba(222, 223, 217, 0.9);
+        border-radius: 15px;
+        background: rgba(248, 246, 241, 0.94);
+        box-shadow: 0 10px 28px rgba(47, 58, 53, 0.12);
+        transform: translateX(-50%);
+        backdrop-filter: blur(18px);
+      }
+
+      .prototype-nav button {
+        flex: 0 0 auto;
+        padding: 8px 11px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .prototype-nav button.active {
+        color: white;
+        background: var(--teal);
+      }
+
+      .phone {
+        position: relative;
+        width: 390px;
+        height: 844px;
+        overflow: hidden;
+        border: 1px solid rgba(29, 39, 35, 0.08);
+        border-radius: 42px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: none;
+        background: var(--surface);
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .status {
+        height: 48px;
+        padding: 15px 22px 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .signals {
+        display: flex;
+        gap: 6px;
+      }
+
+      .topbar {
+        height: 59px;
+        padding: 3px 20px 11px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .topbar.compact {
+        height: 54px;
+        padding-bottom: 8px;
+      }
+
+      .eyebrow {
+        margin: 0 0 2px;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 0;
+        font-size: 27px;
+        line-height: 1.08;
+        letter-spacing: -0.8px;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+        font-size: 15px;
+        letter-spacing: -0.25px;
+      }
+
+      h3 {
+        margin-bottom: 4px;
+        font-size: 15px;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .icon-button,
+      .back-button,
+      .text-button {
+        border: 0;
+        background: transparent;
+      }
+
+      .icon-button {
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        color: var(--teal-deep);
+        background: var(--card);
+        font-weight: 700;
+      }
+
+      .back-button {
+        padding: 8px 5px;
+        color: var(--teal-deep);
+        font-size: 21px;
+      }
+
+      .text-button {
+        padding: 8px 0;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .date-strip {
+        height: 75px;
+        padding: 5px 15px 10px;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+      }
+
+      .date {
+        position: relative;
+        border: 0;
+        border-radius: 17px;
+        color: var(--muted);
+        background: transparent;
+      }
+
+      .date small,
+      .date strong {
+        display: block;
+      }
+
+      .date small {
+        margin-bottom: 5px;
+        font-size: 10px;
+      }
+
+      .date strong {
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      .date.has-trip::after {
+        position: absolute;
+        bottom: 5px;
+        left: calc(50% - 2px);
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--warm);
+        content: "";
+      }
+
+      .date.active {
+        color: white;
+        background: var(--teal);
+        box-shadow: 0 6px 16px rgba(23, 127, 114, 0.2);
+      }
+
+      .date.active strong {
+        color: white;
+      }
+
+      .date.active::after {
+        background: white;
+      }
+
+      .content {
+        height: calc(100% - 107px);
+        padding: 8px 18px 100px;
+        overflow-y: auto;
+        scrollbar-width: none;
+      }
+
+      .home-content {
+        height: calc(100% - 182px);
+      }
+
+      .content::-webkit-scrollbar {
+        display: none;
+      }
+
+      .month-label,
+      .section-head,
+      .row,
+      .ready-line,
+      .field-row,
+      .result-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .month-label {
+        margin-bottom: 11px;
+      }
+
+      .month-label h2,
+      .section-head h2 {
+        margin: 0;
+      }
+
+      .month-label span,
+      .section-head span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .timeline {
+        position: relative;
+      }
+
+      .timeline::before {
+        position: absolute;
+        top: 11px;
+        bottom: 10px;
+        left: 10px;
+        width: 1px;
+        background: #cfd7d3;
+        content: "";
+      }
+
+      .timeline-row {
+        position: relative;
+        margin-bottom: 13px;
+        padding-left: 29px;
+      }
+
+      .dot {
+        position: absolute;
+        z-index: 1;
+        top: 8px;
+        left: 5px;
+        width: 11px;
+        height: 11px;
+        border: 3px solid var(--surface);
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 1px var(--teal);
+      }
+
+      .dot.muted {
+        background: #aeb8b3;
+        box-shadow: 0 0 0 1px #aeb8b3;
+      }
+
+      .time-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .time-label strong {
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .card {
+        padding: 15px;
+        border: 1px solid var(--line);
+        border-radius: 19px;
+        background: var(--card);
+      }
+
+      .trip-card {
+        padding: 16px;
+        border-color: rgba(23, 127, 114, 0.24);
+        border-radius: 21px;
+        background: linear-gradient(135deg, rgba(227, 240, 236, 0.7), transparent 55%), var(--card);
+        box-shadow: 0 8px 20px rgba(49, 63, 56, 0.07);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .card-head h3 {
+        font-size: 19px;
+      }
+
+      .days,
+      .pill,
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9px;
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .days {
+        padding: 6px 9px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+        font-size: 11px;
+      }
+
+      .route {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
+        align-items: center;
+        gap: 7px;
+        margin: 15px 0 14px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .route i {
+        height: 1px;
+        background: #ccd5d0;
+      }
+
+      .route b {
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .ready {
+        padding-top: 12px;
+        border-top: 1px solid #e9ece9;
+      }
+
+      .ready-line {
+        margin-bottom: 7px;
+        font-size: 11px;
+      }
+
+      .ready-line strong {
+        color: var(--teal-deep);
+        font-size: 12px;
+      }
+
+      .progress {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: #e6ebe8;
+      }
+
+      .progress span {
+        display: block;
+        width: 73.333%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--teal);
+      }
+
+      .metadata,
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 11px;
+      }
+
+      .pill {
+        padding: 5px 8px;
+        color: #53605a;
+        background: #f1f3f0;
+      }
+
+      .mini-card {
+        min-height: 68px;
+      }
+
+      .date-badge {
+        width: 42px;
+        flex: 0 0 42px;
+        padding: 7px 0;
+        border-radius: 12px;
+        color: var(--warm);
+        background: var(--warm-soft);
+        text-align: center;
+      }
+
+      .date-badge small,
+      .date-badge strong {
+        display: block;
+      }
+
+      .date-badge small {
+        font-size: 9px;
+      }
+
+      .date-badge strong {
+        font-size: 17px;
+      }
+
+      .mini-copy {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .mini-copy h3,
+      .mini-copy p {
+        margin-bottom: 2px;
+      }
+
+      .chevron {
+        color: #a1aaa5;
+        font-size: 20px;
+      }
+
+      .quick-title {
+        margin: 21px 0 10px;
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .quick {
+        height: 64px;
+        padding: 9px 5px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--card);
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .quick span {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--teal);
+        font-size: 18px;
+      }
+
+      .bottom-nav {
+        position: absolute;
+        z-index: 5;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 83px;
+        padding: 10px 12px 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 58px 1fr 1fr;
+        align-items: end;
+        border-top: 1px solid rgba(209, 213, 210, 0.85);
+        background: rgba(250, 249, 246, 0.95);
+        backdrop-filter: blur(18px);
+      }
+
+      .nav-item {
+        color: #8a938f;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .nav-item span {
+        display: block;
+        height: 22px;
+        margin-bottom: 2px;
+        font-size: 18px;
+      }
+
+      .nav-item.active {
+        color: var(--teal);
+      }
+
+      .plus {
+        align-self: start;
+        width: 50px;
+        height: 50px;
+        margin: -25px auto 0;
+        border: 4px solid var(--surface);
+        border-radius: 50%;
+        color: white;
+        background: var(--teal);
+        box-shadow: 0 8px 18px rgba(23, 127, 114, 0.27);
+        font-size: 28px;
+        font-weight: 300;
+        text-align: center;
+      }
+
+      .segmented {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        margin: 2px 0 14px;
+        padding: 3px;
+        border-radius: 13px;
+        background: #eaece8;
+      }
+
+      .segmented button {
+        padding: 8px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .segmented button.active {
+        color: var(--teal-deep);
+        background: var(--card);
+        box-shadow: 0 3px 10px rgba(49, 63, 56, 0.08);
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 11px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        outline: none;
+        color: var(--ink);
+        background: #fbfbf9;
+        font-size: 13px;
+      }
+
+      .field textarea {
+        min-height: 68px;
+        resize: none;
+      }
+
+      .two-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+
+      .section-gap {
+        margin-top: 15px;
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+
+      .primary,
+      .secondary,
+      .danger-button {
+        min-height: 43px;
+        padding: 10px 13px;
+        border-radius: 13px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .primary {
+        border: 0;
+        color: white;
+        background: var(--teal);
+      }
+
+      .secondary {
+        border: 1px solid var(--line);
+        color: var(--teal-deep);
+        background: var(--card);
+      }
+
+      .danger-button {
+        border: 1px solid #eed0ca;
+        color: var(--danger);
+        background: var(--danger-soft);
+      }
+
+      .pack-row {
+        padding: 11px 0;
+        border-bottom: 1px solid #eceeea;
+      }
+
+      .pack-row:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+      }
+
+      .pack-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .tag {
+        padding: 4px 7px;
+        color: var(--muted);
+        background: #f1f3f0;
+      }
+
+      .tag.warm {
+        color: #9a6036;
+        background: var(--warm-soft);
+      }
+
+      .hero-detail {
+        padding: 17px;
+        border-color: rgba(23, 127, 114, 0.22);
+        background: linear-gradient(145deg, rgba(227, 240, 236, 0.84), transparent 65%), var(--card);
+      }
+
+      .hero-detail .route {
+        margin-bottom: 12px;
+      }
+
+      .phase-track {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        margin-top: 13px;
+      }
+
+      .phase {
+        position: relative;
+        padding-top: 13px;
+        color: var(--muted);
+        font-size: 9px;
+        text-align: center;
+      }
+
+      .phase::before {
+        position: absolute;
+        top: 3px;
+        right: 0;
+        left: 0;
+        height: 2px;
+        background: #dfe5e1;
+        content: "";
+      }
+
+      .phase.done,
+      .phase.active {
+        color: var(--teal-deep);
+        font-weight: 700;
+      }
+
+      .phase.done::before,
+      .phase.active::before {
+        background: var(--teal);
+      }
+
+      .check-entry {
+        padding: 14px;
+        border-color: rgba(23, 127, 114, 0.2);
+        background: var(--teal-soft);
+      }
+
+      .check-entry strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--teal-deep);
+        font-size: 14px;
+      }
+
+      .check-entry p {
+        margin-bottom: 0;
+      }
+
+      .template-card {
+        margin-bottom: 10px;
+      }
+
+      .template-mark {
+        width: 43px;
+        height: 43px;
+        flex: 0 0 43px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+        font-size: 20px;
+      }
+
+      .check-shell {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        padding: 56px 20px 28px;
+        background: radial-gradient(circle at 50% 15%, rgba(227, 240, 236, 0.9), transparent 40%), var(--surface);
+      }
+
+      .check-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .check-counter {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .check-progress {
+        margin: 18px 0 28px;
+      }
+
+      .check-progress .progress span {
+        width: 33.333%;
+      }
+
+      .check-main {
+        flex: 1;
+        text-align: center;
+      }
+
+      .check-group {
+        margin-bottom: 26px;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .item-orb {
+        width: 154px;
+        height: 154px;
+        margin: 0 auto 24px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(23, 127, 114, 0.18);
+        border-radius: 50%;
+        background: var(--card);
+        box-shadow: 0 18px 40px rgba(49, 63, 56, 0.1);
+        font-size: 56px;
+      }
+
+      .check-main h1 {
+        margin-bottom: 6px;
+        font-size: 28px;
+      }
+
+      .check-main p {
+        font-size: 13px;
+      }
+
+      .check-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.25fr;
+        gap: 8px;
+      }
+
+      .check-actions button {
+        min-height: 49px;
+        border-radius: 14px;
+      }
+
+      .summary-mark {
+        width: 76px;
+        height: 76px;
+        margin: 12px auto 15px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        color: white;
+        background: var(--teal);
+        font-size: 34px;
+      }
+
+      .summary-title {
+        margin-bottom: 22px;
+        text-align: center;
+      }
+
+      .summary-title h1 {
+        margin-bottom: 6px;
+      }
+
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .result-stat {
+        padding: 13px 6px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: var(--card);
+        text-align: center;
+      }
+
+      .result-stat strong,
+      .result-stat span {
+        display: block;
+      }
+
+      .result-stat strong {
+        margin-bottom: 4px;
+        font-size: 21px;
+      }
+
+      .result-stat span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .result-line {
+        padding: 11px 0;
+        border-bottom: 1px solid #eceeea;
+        font-size: 12px;
+      }
+
+      .result-line:last-child {
+        border-bottom: 0;
+      }
+
+      .result-status {
+        color: var(--danger);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .mode-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .mode-option {
+        min-height: 76px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: var(--card);
+        text-align: left;
+      }
+
+      .mode-option strong,
+      .mode-option small {
+        display: block;
+      }
+
+      .mode-option strong {
+        margin: 7px 0 3px;
+        font-size: 12px;
+      }
+
+      .mode-option small {
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .mode-option.selected {
+        border-color: rgba(23, 127, 114, 0.45);
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .fact {
+        padding: 11px;
+        border-radius: 13px;
+        background: #f3f4f1;
+      }
+
+      .fact span,
+      .fact strong {
+        display: block;
+      }
+
+      .fact span {
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .fact strong {
+        font-size: 12px;
+      }
+
+      .detail-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        margin: 13px 0;
+        padding: 4px;
+        border-radius: 14px;
+        background: #eaece8;
+      }
+
+      .detail-tabs button {
+        padding: 8px 3px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .detail-tabs button.active {
+        color: var(--teal-deep);
+        background: var(--card);
+        box-shadow: 0 3px 10px rgba(49, 63, 56, 0.08);
+      }
+
+      .weather-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+
+      .weather-day {
+        padding: 11px 6px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card);
+        text-align: center;
+      }
+
+      .weather-day strong,
+      .weather-day span,
+      .weather-day small {
+        display: block;
+      }
+
+      .weather-day span {
+        margin: 6px 0;
+        font-size: 20px;
+      }
+
+      .weather-day strong {
+        font-size: 11px;
+      }
+
+      .weather-day small {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .booking-row,
+      .attachment-row {
+        padding: 11px 0;
+        border-bottom: 1px solid #eceeea;
+      }
+
+      .booking-row:last-child,
+      .attachment-row:last-child {
+        border-bottom: 0;
+      }
+
+      .booking-mark {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        background: var(--warm-soft);
+      }
+
+      .budget-bar {
+        display: flex;
+        height: 8px;
+        margin: 9px 0;
+        overflow: hidden;
+        border-radius: 99px;
+        background: #eceeea;
+      }
+
+      .budget-bar span:nth-child(1) {
+        width: 44%;
+        background: var(--teal);
+      }
+
+      .budget-bar span:nth-child(2) {
+        width: 22%;
+        background: var(--warm);
+      }
+
+      .budget-bar span:nth-child(3) {
+        width: 12%;
+        background: #90a7a0;
+      }
+
+      .day-tabs {
+        display: flex;
+        gap: 7px;
+        margin-bottom: 13px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .day-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .day-pill {
+        min-width: 72px;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        color: var(--muted);
+        background: var(--card);
+        font-size: 10px;
+        text-align: center;
+      }
+
+      .day-pill strong {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .day-pill.active {
+        border-color: var(--teal);
+        color: white;
+        background: var(--teal);
+      }
+
+      .day-pill.active strong {
+        color: white;
+      }
+
+      .map-card {
+        position: relative;
+        height: 136px;
+        overflow: hidden;
+        border: 1px solid #d7ded9;
+        border-radius: 19px;
+        background:
+          linear-gradient(
+            31deg,
+            transparent 47%,
+            rgba(23, 127, 114, 0.12) 48%,
+            rgba(23, 127, 114, 0.12) 52%,
+            transparent 53%
+          ),
+          linear-gradient(
+            132deg,
+            transparent 44%,
+            rgba(210, 140, 87, 0.13) 45%,
+            rgba(210, 140, 87, 0.13) 49%,
+            transparent 50%
+          ),
+          #edf1ec;
+      }
+
+      .map-label {
+        position: absolute;
+        padding: 5px 7px;
+        border-radius: 9px;
+        color: var(--teal-deep);
+        background: white;
+        box-shadow: 0 4px 12px rgba(49, 63, 56, 0.12);
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .map-label:nth-child(1) {
+        top: 24px;
+        left: 27px;
+      }
+
+      .map-label:nth-child(2) {
+        top: 61px;
+        left: 134px;
+      }
+
+      .map-label:nth-child(3) {
+        right: 30px;
+        bottom: 22px;
+      }
+
+      .schedule {
+        position: relative;
+        margin-top: 13px;
+      }
+
+      .schedule::before {
+        position: absolute;
+        top: 17px;
+        bottom: 18px;
+        left: 43px;
+        width: 1px;
+        background: #d5ddd8;
+        content: "";
+      }
+
+      .schedule-event {
+        position: relative;
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 14px;
+        margin-bottom: 11px;
+      }
+
+      .event-time {
+        padding-top: 11px;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 700;
+        text-align: right;
+      }
+
+      .event-body {
+        position: relative;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: var(--card);
+      }
+
+      .event-body::before {
+        position: absolute;
+        top: 14px;
+        left: -19px;
+        width: 7px;
+        height: 7px;
+        border: 3px solid var(--surface);
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 1px var(--teal);
+        content: "";
+      }
+
+      .event-body h3 {
+        margin-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .event-body p {
+        margin-bottom: 0;
+        font-size: 10px;
+      }
+
+      .route-step {
+        margin: -2px 0 9px 48px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .smart-note {
+        padding: 12px;
+        border: 1px solid rgba(210, 140, 87, 0.24);
+        border-radius: 15px;
+        background: var(--warm-soft);
+      }
+
+      .smart-note strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #8a5934;
+        font-size: 11px;
+      }
+
+      .smart-note p {
+        margin-bottom: 0;
+        color: #785f4d;
+        font-size: 10px;
+      }
+
+      .guide-source {
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--card);
+      }
+
+      .source-mark {
+        width: 39px;
+        height: 39px;
+        flex: 0 0 39px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+        font-size: 16px;
+      }
+
+      .source-status {
+        color: var(--teal);
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .guide-category {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 7px;
+      }
+
+      .guide-category button {
+        min-height: 54px;
+        padding: 8px 4px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card);
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .guide-category span {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 17px;
+      }
+
+      .place-row {
+        padding: 10px 0;
+        border-bottom: 1px solid #eceeea;
+      }
+
+      .place-row:last-child {
+        border-bottom: 0;
+      }
+
+      .place-index {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 9px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .guided-only {
+        display: none;
+      }
+
+      .guided .quick-only {
+        display: none;
+      }
+
+      .guided .guided-only {
+        display: block;
+      }
+
+      .toast {
+        position: absolute;
+        z-index: 20;
+        right: 32px;
+        bottom: 100px;
+        left: 32px;
+        padding: 11px 14px;
+        border-radius: 13px;
+        color: white;
+        background: rgba(28, 36, 33, 0.92);
+        text-align: center;
+        font-size: 12px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 430px) {
+        body {
+          display: block;
+          padding: 55px 0 0;
+          background: var(--surface);
+        }
+
+        .prototype-nav {
+          top: 6px;
+        }
+
+        .phone {
+          width: 100vw;
+          height: calc(100vh - 55px);
+          min-height: 700px;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="prototype-nav" aria-label="原型页面切换">
+      <button class="active" data-screen-target="home">主页</button>
+      <button data-screen-target="create">新建</button>
+      <button data-screen-target="detail">总览</button>
+      <button data-screen-target="itinerary">日程</button>
+      <button data-screen-target="guide">攻略</button>
+      <button data-screen-target="templates">模板</button>
+      <button data-screen-target="check">核对</button>
+      <button data-screen-target="summary">结果</button>
+    </nav>
+
+    <main class="phone" aria-label="行程模块 v2 时间轴主题原型">
+      <section class="screen active" data-screen="home">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">我的行程</p>
+            <h1>旅程时间轴</h1>
+          </div>
+          <button class="icon-button" type="button">31</button>
+        </div>
+        <nav class="date-strip" aria-label="日期选择">
+          <button class="date"><small>一</small><strong>27</strong></button>
+          <button class="date"><small>二</small><strong>28</strong></button>
+          <button class="date"><small>三</small><strong>29</strong></button>
+          <button class="date"><small>四</small><strong>30</strong></button>
+          <button class="date active has-trip"><small>五</small><strong>31</strong></button>
+          <button class="date has-trip"><small>六</small><strong>1</strong></button>
+          <button class="date has-trip"><small>日</small><strong>2</strong></button>
+        </nav>
+        <div class="content home-content">
+          <div class="month-label">
+            <h2>2026 年 7 月</h2>
+            <span>2 个即将开始</span>
+          </div>
+          <div class="timeline">
+            <article class="timeline-row">
+              <span class="dot"></span>
+              <div class="time-label"><strong>7月31日 周五</strong><span>明天出发</span></div>
+              <button class="card trip-card" data-go="detail" style="width: 100%; text-align: left">
+                <div class="card-head">
+                  <div>
+                    <h3>杭州周末旅行</h3>
+                    <p>7月31日 – 8月2日 · 杭州</p>
+                  </div>
+                  <span class="days">3 天</span>
+                </div>
+                <div class="route"><b>上海</b><i></i><span>高铁</span><i></i><b>杭州</b></div>
+                <div class="ready">
+                  <div class="ready-line"><span>出发准备</span><strong>11 / 15</strong></div>
+                  <div class="progress"><span></span></div>
+                  <div class="metadata">
+                    <span class="pill">3 天日程</span><span class="pill">2 项预订</span
+                    ><span class="pill">准备 11/15</span>
+                  </div>
+                </div>
+              </button>
+            </article>
+            <article class="timeline-row">
+              <span class="dot muted"></span>
+              <div class="time-label"><strong>8月12日 周三</strong><span>15 天后</span></div>
+              <div class="card mini-card row">
+                <div class="date-badge"><small>8月</small><strong>12</strong></div>
+                <div class="mini-copy">
+                  <h3>上海出差</h3>
+                  <p>2 天 · 工作行程 · 准备 6/9</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+            </article>
+          </div>
+          <h2 class="quick-title">快速开始</h2>
+          <div class="quick-actions">
+            <button class="quick" data-go="create"><span>＋</span>新建行程</button>
+            <button class="quick" data-toast="已复制上次行程"><span>⧉</span>复制上次</button>
+            <button class="quick" data-go="templates"><span>▤</span>使用模板</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item"><span>▣</span>物品</div>
+          <div class="nav-item active"><span>⌁</span>行程</div>
+          <button class="plus" data-go="create">＋</button>
+          <div class="nav-item"><span>◎</span>社区</div>
+          <div class="nav-item"><span>●</span>我的</div>
+        </nav>
+      </section>
+
+      <section class="screen" data-screen="create">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="home">‹</button>
+          <h2 style="margin: 0">新建行程</h2>
+          <button class="text-button" data-toast="草稿已保存">存草稿</button>
+        </div>
+        <div class="content" id="create-content">
+          <div class="segmented">
+            <button class="active" data-create-mode="quick">快速创建</button>
+            <button data-create-mode="guided">逐步创建</button>
+          </div>
+          <div class="guided-only card" style="margin-bottom: 11px">
+            <div class="ready-line"><strong>第 1 步 · 创建方式</strong><span>1 / 5</span></div>
+            <div class="progress"><span style="width: 20%"></span></div>
+          </div>
+          <div class="form-stack">
+            <section class="card">
+              <div class="section-head">
+                <h2>从哪里开始</h2>
+                <span>稍后都能修改</span>
+              </div>
+              <div class="mode-grid">
+                <button class="mode-option selected" data-toast="使用空白行程">
+                  ＋<strong>自己规划</strong><small>从日期和目的地开始</small>
+                </button>
+                <button class="mode-option" data-toast="打开攻略链接导入">
+                  ↗<strong>导入攻略</strong><small>链接、图片或长文本</small>
+                </button>
+                <button class="mode-option" data-go="templates">
+                  ▤<strong>使用模板</strong><small>复用清单与安排</small>
+                </button>
+                <button class="mode-option" data-toast="已复制最近行程">
+                  ⧉<strong>复制行程</strong><small>保留日程和物品组</small>
+                </button>
+              </div>
+            </section>
+            <section class="card">
+              <div class="section-head">
+                <h2>基本信息</h2>
+                <span>必填</span>
+              </div>
+              <div class="field"><label>行程名称</label><input value="杭州周末旅行" /></div>
+              <div class="two-cols section-gap">
+                <div class="field"><label>出发地</label><input value="上海" /></div>
+                <div class="field"><label>目的地</label><input value="杭州" /></div>
+              </div>
+              <div class="two-cols section-gap">
+                <div class="field"><label>出发日期</label><input value="2026-07-31" /></div>
+                <div class="field"><label>返程日期</label><input value="2026-08-02" /></div>
+              </div>
+            </section>
+            <section class="card quick-only">
+              <div class="section-head">
+                <h2>旅行偏好</h2>
+                <button class="text-button" data-toast="已打开更多偏好">更多</button>
+              </div>
+              <div class="tag-row" style="margin-top: 0">
+                <span class="tag warm">朋友出行 · 2人</span>
+                <span class="tag">轻松节奏</span>
+                <span class="tag">人文历史</span>
+                <span class="tag">本地美食</span>
+                <span class="tag">公共交通</span>
+              </div>
+              <div class="two-cols section-gap">
+                <div class="field"><label>预算上限</label><input value="¥ 3,000" /></div>
+                <div class="field"><label>住宿区域</label><input value="西湖周边" /></div>
+              </div>
+            </section>
+            <section class="card quick-only">
+              <div class="section-head">
+                <h2>规划内容</h2>
+                <span>创建后继续完善</span>
+              </div>
+              <div class="info-grid">
+                <div class="fact"><span>每日路线</span><strong>3 天时间轴</strong></div>
+                <div class="fact"><span>地点与地图</span><strong>景点、餐厅</strong></div>
+                <div class="fact"><span>预订与凭证</span><strong>车票、酒店</strong></div>
+                <div class="fact"><span>攻略与资料</span><strong>链接、截图</strong></div>
+                <div class="fact"><span>预算与支出</span><strong>分类记录</strong></div>
+                <div class="fact"><span>准备与核对</span><strong>物品、待办</strong></div>
+              </div>
+            </section>
+            <section class="card quick-only">
+              <div class="section-head">
+                <h2>先加入的行程资料</h2>
+                <button class="text-button" data-toast="选择文件或照片">添加</button>
+              </div>
+              <div class="attachment-row row">
+                <div class="booking-mark">🚄</div>
+                <div class="mini-copy">
+                  <h3>G7315 上海虹桥—杭州东</h3>
+                  <p>7月31日 09:10 · 已识别车次和座位</p>
+                </div>
+                <span class="days">已导入</span>
+              </div>
+              <div class="attachment-row row">
+                <div class="booking-mark">🏨</div>
+                <div class="mini-copy">
+                  <h3>西湖国宾馆</h3>
+                  <p>2 晚 · 待补充确认号</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+            </section>
+            <section class="card quick-only">
+              <div class="section-head">
+                <h2>准备与携带</h2>
+                <button class="text-button">管理</button>
+              </div>
+              <div class="pack-row row">
+                <div class="pack-icon">🎒</div>
+                <div class="mini-copy">
+                  <h3>通勤背包</h3>
+                  <p>MacBook、充电器、证件等 6 项</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+              <div class="pack-row row">
+                <div class="pack-icon">🧳</div>
+                <div class="mini-copy">
+                  <h3>登机箱</h3>
+                  <p>衣物、洗漱用品等 7 项</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+              <div class="pack-row row">
+                <div class="pack-icon">＋</div>
+                <div class="mini-copy">
+                  <h3>添加物品或临时项</h3>
+                  <p>从物品库、容器或临时清单加入</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+            </section>
+            <section class="card quick-only">
+              <h2>核对设置</h2>
+              <div class="row">
+                <div>
+                  <h3>正式物品默认需要带回</h3>
+                  <p style="margin: 0">可单独排除消耗品和赠送物品</p>
+                </div>
+                <span class="days">已开启</span>
+              </div>
+            </section>
+            <section class="card">
+              <div class="field">
+                <label>备注</label
+                ><textarea placeholder="同行人约定、特别需求或其他提醒">膝盖不适，避免连续安排长距离步行。</textarea>
+              </div>
+            </section>
+            <button class="primary quick-only" data-go="detail">创建完整行程档案</button>
+            <div class="action-row guided-only">
+              <button class="secondary">上一步</button
+              ><button class="primary" data-toast="进入第 2 步：基本信息">下一步</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="detail">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="home">‹</button>
+          <h2 style="margin: 0">行程详情</h2>
+          <button class="text-button">•••</button>
+        </div>
+        <div class="content">
+          <section class="card hero-detail">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">明天出发</p>
+                <h1>杭州周末旅行</h1>
+                <p>7月31日 – 8月2日 · 3 天</p>
+              </div>
+              <span class="days">准备中</span>
+            </div>
+            <div class="route"><b>上海</b><i></i><span>高铁</span><i></i><b>杭州</b></div>
+            <div class="ready-line"><span>准备进度</span><strong>11 / 15</strong></div>
+            <div class="progress"><span></span></div>
+            <div class="phase-track">
+              <div class="phase done">已创建</div>
+              <div class="phase active">准备中</div>
+              <div class="phase">待出发</div>
+            </div>
+          </section>
+          <nav class="detail-tabs" aria-label="行程详情分区">
+            <button class="active" data-go="detail">总览</button>
+            <button data-go="itinerary">日程</button>
+            <button data-go="guide">攻略</button>
+            <button data-toast="打开准备与物品">准备</button>
+          </nav>
+          <div class="section-head">
+            <h2>三日天气</h2>
+            <span>杭州 · 出行建议</span>
+          </div>
+          <div class="weather-strip">
+            <div class="weather-day"><strong>周五</strong><span>☀</span><small>34° / 27°</small></div>
+            <div class="weather-day"><strong>周六</strong><span>🌦</span><small>31° / 25°</small></div>
+            <div class="weather-day"><strong>周日</strong><span>☁</span><small>30° / 24°</small></div>
+          </div>
+          <div class="smart-note section-gap">
+            <strong>行前提醒</strong>
+            <p>周六午后有雷阵雨；灵隐寺预约尚未完成，建议今天 20:00 前处理。</p>
+          </div>
+          <div class="section-head section-gap">
+            <h2>最近安排</h2>
+            <button class="text-button" data-go="itinerary">查看全部</button>
+          </div>
+          <section class="card">
+            <div class="booking-row row">
+              <div class="booking-mark">🚄</div>
+              <div class="mini-copy">
+                <h3>上海虹桥 → 杭州东</h3>
+                <p>明天 09:10 · G7315 · 05车 08A</p>
+              </div>
+              <span class="days">已出票</span>
+            </div>
+            <div class="booking-row row">
+              <div class="booking-mark">🏨</div>
+              <div class="mini-copy">
+                <h3>西湖国宾馆入住</h3>
+                <p>明天 14:00 · 2 晚 · 确认号 8H26••</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+          </section>
+          <section class="card check-entry section-gap" data-go="check">
+            <div class="row">
+              <div>
+                <strong>准备度 11 / 15</strong>
+                <p>4 件物品待确认 · 1 项行前待办</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+          </section>
+          <div class="section-head section-gap">
+            <h2>预算概览</h2>
+            <span>¥1,840 / ¥3,000</span>
+          </div>
+          <section class="card">
+            <div class="ready-line"><span>已确认支出</span><strong>61%</strong></div>
+            <div class="budget-bar"><span></span><span></span><span></span></div>
+            <div class="tag-row">
+              <span class="tag">住宿 ¥1,320</span><span class="tag warm">交通 ¥360</span
+              ><span class="tag">门票 ¥160</span>
+            </div>
+          </section>
+          <div class="action-row section-gap">
+            <button class="secondary" data-toast="行程已复制">复制行程</button
+            ><button class="secondary" data-toast="已保存为模板">存为模板</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="itinerary">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="detail">‹</button>
+          <h2 style="margin: 0">每日行程</h2>
+          <button class="text-button" data-toast="进入日程编辑">编辑</button>
+        </div>
+        <div class="content">
+          <div class="day-tabs">
+            <button class="day-pill active"><strong>7月31日</strong>抵达杭州</button>
+            <button class="day-pill"><strong>8月1日</strong>西湖西线</button>
+            <button class="day-pill"><strong>8月2日</strong>运河返程</button>
+          </div>
+          <div class="map-card" aria-label="第一天路线示意">
+            <span class="map-label">1 杭州东站</span><span class="map-label">2 酒店</span
+            ><span class="map-label">3 西湖天地</span>
+          </div>
+          <div class="smart-note section-gap">
+            <strong>路线建议</strong>
+            <p>当天约 7.2 公里，预计步行 55 分钟；14:00 后酒店可办理入住。</p>
+          </div>
+          <div class="schedule">
+            <article class="schedule-event">
+              <div class="event-time">10:02</div>
+              <div class="event-body">
+                <h3>抵达杭州东站</h3>
+                <p>G7315 · 出站后乘地铁 1 号线</p>
+                <div class="tag-row"><span class="tag">凭证已保存</span></div>
+              </div>
+            </article>
+            <div class="route-step">地铁 1 号线 → 龙翔桥 · 约 28 分钟</div>
+            <article class="schedule-event">
+              <div class="event-time">11:00</div>
+              <div class="event-body">
+                <h3>知味观 · 湖滨店</h3>
+                <p>午餐 · 推荐猫耳朵、片儿川 · 人均 ¥68</p>
+                <div class="tag-row"><span class="tag warm">攻略推荐</span><span class="tag">已收藏</span></div>
+              </div>
+            </article>
+            <div class="route-step">步行 900 米 · 约 13 分钟</div>
+            <article class="schedule-event">
+              <div class="event-time">13:00</div>
+              <div class="event-body">
+                <h3>西湖环湖漫步</h3>
+                <p>湖滨一公园 → 柳浪闻莺 · 建议游玩 2 小时</p>
+                <div class="tag-row"><span class="tag">免费</span><span class="tag">可调整</span></div>
+              </div>
+            </article>
+            <article class="schedule-event">
+              <div class="event-time">16:00</div>
+              <div class="event-body">
+                <h3>西湖国宾馆入住</h3>
+                <p>确认号 8H26•• · 出示身份证办理</p>
+              </div>
+            </article>
+          </div>
+          <button class="secondary" style="width: 100%" data-toast="添加地点、交通、住宿或备忘">＋ 添加安排</button>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="guide">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="detail">‹</button>
+          <h2 style="margin: 0">攻略与资料</h2>
+          <button class="text-button" data-toast="添加链接、图片、文字或文件">＋ 添加</button>
+        </div>
+        <div class="content">
+          <section class="guide-source">
+            <div class="row">
+              <div class="source-mark">↗</div>
+              <div class="mini-copy">
+                <h3>杭州三日慢游路线</h3>
+                <p>网页攻略 · 18 个地点 · 7 条提示</p>
+              </div>
+              <span class="source-status">已解析</span>
+            </div>
+            <div class="tag-row"><span class="tag">已加入 8 个地点</span><span class="tag warm">3 个待筛选</span></div>
+          </section>
+          <section class="guide-source section-gap">
+            <div class="row">
+              <div class="source-mark">▧</div>
+              <div class="mini-copy">
+                <h3>朋友分享的杭州清单</h3>
+                <p>3 张截图 · 已识别地点和营业时间</p>
+              </div>
+              <span class="source-status">已解析</span>
+            </div>
+          </section>
+          <div class="section-head section-gap">
+            <h2>整理后的攻略</h2>
+            <span>自动归类，可编辑</span>
+          </div>
+          <div class="guide-category">
+            <button data-toast="查看 8 个景点"><span>⌖</span>景点 8</button>
+            <button data-toast="查看 6 家餐厅"><span>◉</span>美食 6</button>
+            <button data-toast="查看 4 条交通提示"><span>↝</span>交通 4</button>
+            <button data-toast="查看 5 条避坑提醒"><span>!</span>避坑 5</button>
+          </div>
+          <div class="section-head section-gap">
+            <h2>待加入日程</h2>
+            <span>3 个地点</span>
+          </div>
+          <section class="card">
+            <div class="place-row row">
+              <div class="place-index">1</div>
+              <div class="mini-copy">
+                <h3>中国丝绸博物馆</h3>
+                <p>周一闭馆 · 建议 2 小时 · 距酒店 2.6km</p>
+              </div>
+              <button class="text-button" data-toast="已加入第二天">加入</button>
+            </div>
+            <div class="place-row row">
+              <div class="place-index">2</div>
+              <div class="mini-copy">
+                <h3>法喜寺</h3>
+                <p>06:30–18:00 · 需提前安排交通</p>
+              </div>
+              <button class="text-button" data-toast="已加入第二天">加入</button>
+            </div>
+            <div class="place-row row">
+              <div class="place-index">3</div>
+              <div class="mini-copy">
+                <h3>大马弄</h3>
+                <p>早餐与本地小吃 · 推荐上午前往</p>
+              </div>
+              <button class="text-button" data-toast="已加入第三天">加入</button>
+            </div>
+          </section>
+          <div class="section-head section-gap">
+            <h2>实用资料</h2>
+            <span>支持离线保存</span>
+          </div>
+          <section class="card">
+            <div class="attachment-row row">
+              <div class="booking-mark">☂</div>
+              <div class="mini-copy">
+                <h3>天气与穿着</h3>
+                <p>高温多雨，建议防晒与便携雨具</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <div class="attachment-row row">
+              <div class="booking-mark">☎</div>
+              <div class="mini-copy">
+                <h3>紧急与常用电话</h3>
+                <p>酒店、同行人、铁路客服、当地急救</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <div class="attachment-row row">
+              <div class="booking-mark">▤</div>
+              <div class="mini-copy">
+                <h3>离线资料包</h3>
+                <p>车票、酒店凭证、攻略摘要、地址</p>
+              </div>
+              <span class="days">已保存</span>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="templates">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="home">‹</button>
+          <h2 style="margin: 0">选择行程模板</h2>
+          <button class="text-button">管理</button>
+        </div>
+        <div class="content">
+          <div class="field"><input placeholder="搜索模板" /></div>
+          <div class="section-head section-gap">
+            <h2>常用模板</h2>
+            <span>4 个</span>
+          </div>
+          <button class="card template-card row" data-go="create" style="width: 100%; text-align: left">
+            <div class="template-mark">🧳</div>
+            <div class="mini-copy">
+              <h3>周末短途旅行</h3>
+              <p>2–3 天 · 每日日程 · 预算 · 15 项清单</p>
+              <div class="tag-row"><span class="tag">最近使用</span><span class="tag warm">含攻略与返程核对</span></div>
+            </div>
+            <span class="chevron">›</span>
+          </button>
+          <button class="card template-card row" data-go="create" style="width: 100%; text-align: left">
+            <div class="template-mark">💼</div>
+            <div class="mini-copy">
+              <h3>两天工作出差</h3>
+              <p>交通住宿、会议日程、报销与物品 · 9 项</p>
+            </div>
+            <span class="chevron">›</span>
+          </button>
+          <button class="card template-card row" data-go="create" style="width: 100%; text-align: left">
+            <div class="template-mark">⛺</div>
+            <div class="mini-copy">
+              <h3>周末露营</h3>
+              <p>营地路线、天气应急、预算与装备 · 24 项</p>
+            </div>
+            <span class="chevron">›</span>
+          </button>
+          <div class="section-head section-gap">
+            <h2>最近完成</h2>
+            <span>可直接复制</span>
+          </div>
+          <section class="card row">
+            <div class="date-badge"><small>6月</small><strong>21</strong></div>
+            <div class="mini-copy">
+              <h3>苏州一日游</h3>
+              <p>已完成 · 出发和返程均无遗漏</p>
+            </div>
+            <button class="text-button" data-toast="已复制为新行程">复制</button>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="check">
+        <div class="check-shell">
+          <div class="check-top">
+            <button class="back-button" data-go="detail">×</button><span class="check-counter">5 / 15</span
+            ><button class="text-button" data-toast="进度已保存">暂存</button>
+          </div>
+          <div class="check-progress">
+            <div class="progress"><span></span></div>
+          </div>
+          <div class="check-main">
+            <div class="check-group">出发核对 · 通勤背包</div>
+            <div class="item-orb">💻</div>
+            <h1>MacBook Pro 14"</h1>
+            <p>物品 ID · ITM-00018<br />当前位置：书房 · 办公桌</p>
+            <div class="tag-row" style="justify-content: center">
+              <span class="tag">电子设备</span><span class="tag">需返程带回</span>
+            </div>
+          </div>
+          <div class="check-actions">
+            <button class="danger-button" data-toast="已标记未找到">未找到</button
+            ><button class="secondary" data-toast="已跳过此项">跳过</button
+            ><button class="primary" data-go="summary">已确认</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="summary">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="content" style="height: calc(100% - 48px); padding-top: 10px">
+          <div class="summary-mark">✓</div>
+          <div class="summary-title">
+            <h1>出发核对完成</h1>
+            <p>杭州周末旅行 · 2026年7月31日 08:35</p>
+          </div>
+          <div class="result-grid">
+            <div class="result-stat"><strong style="color: var(--teal)">12</strong><span>已确认</span></div>
+            <div class="result-stat"><strong style="color: var(--danger)">1</strong><span>未找到</span></div>
+            <div class="result-stat"><strong style="color: var(--warm)">2</strong><span>已跳过</span></div>
+          </div>
+          <section class="card">
+            <div class="section-head">
+              <h2>需要处理</h2>
+              <span>3 项</span>
+            </div>
+            <div class="result-line">
+              <div>
+                <strong>相机备用电池</strong>
+                <p style="margin: 2px 0 0">摄影小包</p>
+              </div>
+              <span class="result-status">未找到</span>
+            </div>
+            <div class="result-line">
+              <div>
+                <strong>雨伞</strong>
+                <p style="margin: 2px 0 0">通勤背包</p>
+              </div>
+              <span class="tag warm">已跳过</span>
+            </div>
+            <div class="result-line">
+              <div>
+                <strong>纸巾</strong>
+                <p style="margin: 2px 0 0">临时清单</p>
+              </div>
+              <span class="tag warm">已跳过</span>
+            </div>
+          </section>
+          <button class="primary section-gap" style="width: 100%" data-go="check">只重新核对这 3 项</button>
+          <button class="secondary section-gap" style="width: 100%" data-go="detail">返回行程详情</button>
+        </div>
+      </section>
+
+      <div class="toast" role="status"></div>
+    </main>
+
+    <script>
+      const screens = [...document.querySelectorAll("[data-screen]")]
+      const prototypeButtons = [...document.querySelectorAll("[data-screen-target]")]
+      const toast = document.querySelector(".toast")
+      let toastTimer
+
+      function showScreen(name) {
+        screens.forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name))
+        prototypeButtons.forEach((button) => button.classList.toggle("active", button.dataset.screenTarget === name))
+      }
+
+      prototypeButtons.forEach((button) =>
+        button.addEventListener("click", () => showScreen(button.dataset.screenTarget)),
+      )
+      document
+        .querySelectorAll("[data-go]")
+        .forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.go)))
+
+      document.querySelectorAll(".date").forEach((date) => {
+        date.addEventListener("click", () => {
+          document.querySelectorAll(".date").forEach((item) => item.classList.remove("active"))
+          date.classList.add("active")
+        })
+      })
+
+      document.querySelectorAll("[data-create-mode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-create-mode]").forEach((item) => item.classList.remove("active"))
+          button.classList.add("active")
+          document.getElementById("create-content").classList.toggle("guided", button.dataset.createMode === "guided")
+        })
+      })
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => {
+          toast.textContent = button.dataset.toast
+          toast.classList.add("show")
+          clearTimeout(toastTimer)
+          toastTimer = setTimeout(() => toast.classList.remove("show"), 1300)
+        })
+      })
+    </script>
+  </body>
+</html>

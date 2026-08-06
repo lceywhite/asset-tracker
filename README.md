@@ -37,6 +37,8 @@ Windows PowerShell 若限制执行 `npm.ps1`，可将 `npm` 改为 `npm.cmd`。
 
 - [文档总索引](docs/README.md)
 - [新版产品开发规划](docs/00-planning/product-development-plan-v2.md)
+- [当前开发进度](docs/00-planning/current-development-status.md)
+- [版本管理规范](docs/00-planning/version-management.md)
 - [产品迭代日志（非技术版）](docs/00-planning/product-changelog.md)
 - [Xcode 安装到 iPhone 指南](docs/02-single-user-mvp/ios-xcode-install-guide.md)
 - [Windows 迁移到 Mac 指南](docs/02-single-user-mvp/windows-to-mac-handoff.md)
@@ -46,6 +48,7 @@ Windows PowerShell 若限制执行 `npm.ps1`，可将 `npm` 改为 `npm.cmd`。
 - [Release 0 记录](docs/01-release-0/release-0.md)
 - [单人 MVP Beta 1 记录](docs/02-single-user-mvp/release-1-beta-1.md)
 - [物品模块 v3 设计总说明](docs/03-item-module-v3/item-module-v3-design-spec.md)
+- [行程模块 v2 最终原型与工程接入](docs/04-trip-module-v2/README.md)
 
 ## 当前边界
 

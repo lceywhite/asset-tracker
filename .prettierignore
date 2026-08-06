@@ -8,4 +8,4 @@ package-lock.json
 preview.html
 fix_*.cjs
 docs/03-item-module-v3/prototypes/*.html
-docs/03-item-module-v3/references/item-module-v3-conversation-reference.md
+docs/**/references/*conversation*.md
