@@ -34,6 +34,6 @@ export function updateTripPreferences(patch) {
 
 export function getTripReminderSummary(preferences = getTripPreferences()) {
   const departure = preferences.departureReminder === "off" ? "出发前不提醒" : `出发前一天 ${preferences.reminderTime}`
-  const end = preferences.endReminder === "off" ? "结束前不提醒" : `结束前一天 ${preferences.reminderTime}`
+  const end = preferences.endReminder === "off" ? "返程/结束前不提醒" : `返程/结束前一天 ${preferences.reminderTime}`
   return `${departure}；${end}`
 }

@@ -243,7 +243,7 @@ async function clearData() {
               </select>
             </label>
             <label class="text-[11px] text-gray-500">
-              结束前
+              返程/结束前
               <select
                 class="w-full rounded-lg border bg-white px-2 py-2 text-xs mt-1"
                 :value="tripPreferences.endReminder"

@@ -3,6 +3,9 @@ import assert from "node:assert/strict"
 import {
   applyTripPatch,
   CHECK_STATES,
+  getTripEndAt,
+  getTripLegs,
+  getTripStartAt,
   getCheckKindForTrip,
   getCheckSummary,
   normalizeCheckSession,
@@ -12,7 +15,7 @@ import {
 
 const NOW = "2026-08-06T08:00:00.000Z"
 
-test("normalizes a legacy trip into Plan v2 without losing readable snapshots", () => {
+test("normalizes a legacy trip into the Trip v3 baseline model revision without losing readable snapshots", () => {
   const trip = normalizeTrip(
     {
       title: " 通勤 ",
@@ -32,7 +35,10 @@ test("normalizes a legacy trip into Plan v2 without losing readable snapshots", 
     { id: "trip-1", now: NOW },
   )
 
-  assert.equal(trip.modelVersion, 2)
+  assert.equal(trip.modelVersion, 3)
+  assert.equal(getTripStartAt(trip), "2026-08-07T08:30")
+  assert.equal(getTripEndAt(trip), "2026-08-07T19:00")
+  assert.equal(getTripLegs(trip).length, 2)
   assert.equal(trip.title, "通勤")
   assert.equal(trip.status, "planned")
   assert.equal(trip.tripMode, "round_trip")
@@ -62,6 +68,114 @@ test("keeps a trip id immutable and derives the single phase-specific check acti
   assert.equal(getCheckKindForTrip(updated, "2026-08-10T08:00:00"), "end")
   assert.equal(tripOccursOnDate(updated, "2026-08-09"), true)
   assert.equal(tripOccursOnDate(updated, "2026-08-10"), false)
+})
+
+test("keeps a one-way trip end time and spans every covered calendar date", () => {
+  const trip = normalizeTrip(
+    {
+      title: "Airport transfer",
+      status: "planned",
+      journeyType: "one_way",
+      startsAt: "2026-08-08T22:30",
+      endsAt: "2026-08-09T01:15",
+      legs: [
+        {
+          direction: "outbound",
+          origin: "Home",
+          destination: "Airport",
+          transportMode: "Car",
+          stops: [{ name: "Fuel stop" }],
+        },
+      ],
+    },
+    { id: "trip-one-way", now: NOW },
+  )
+
+  assert.equal(trip.journeyType, "one_way")
+  assert.equal(trip.startsAt, "2026-08-08T22:30")
+  assert.equal(trip.endsAt, "2026-08-09T01:15")
+  assert.equal(trip.returnAt, "")
+  assert.equal(trip.legs.length, 1)
+  assert.equal(trip.legs[0].arrivalAt, trip.endsAt)
+  assert.equal(trip.legs[0].stops[0].name, "Fuel stop")
+  assert.equal(tripOccursOnDate(trip, "2026-08-08"), true)
+  assert.equal(tripOccursOnDate(trip, "2026-08-09"), true)
+})
+
+test("keeps separate outbound and return legs for a round trip", () => {
+  const trip = normalizeTrip(
+    {
+      title: "Weekend trip",
+      status: "planned",
+      journeyType: "round_trip",
+      startsAt: "2026-08-15T08:00",
+      endsAt: "2026-08-16T20:00",
+      legs: [
+        { direction: "outbound", origin: "Home", destination: "Camp", transportMode: "Car" },
+        {
+          direction: "return",
+          origin: "Camp",
+          destination: "Home",
+          departureAt: "2026-08-16T17:00",
+          transportMode: "Car",
+        },
+      ],
+    },
+    { id: "trip-round", now: NOW },
+  )
+
+  assert.equal(trip.legs.length, 2)
+  assert.equal(trip.returnAt, "2026-08-16T17:00")
+  assert.equal(trip.legs[1].arrivalAt, "2026-08-16T20:00")
+  assert.equal(trip.legs[1].origin, "Camp")
+  assert.equal(trip.legs[1].destination, "Home")
+})
+
+test("allows an untitled draft but rejects an untitled planned trip", () => {
+  const draft = normalizeTrip(
+    {
+      title: "",
+      status: "draft",
+      journeyType: "one_way",
+      startsAt: "2026-08-08T08:00",
+      endsAt: "2026-08-08T09:00",
+    },
+    { id: "trip-draft", now: NOW },
+  )
+
+  assert.equal(draft.isUntitled, true)
+  assert.equal(draft.status, "draft")
+  assert.throws(
+    () =>
+      normalizeTrip(
+        { title: "", status: "planned", startsAt: "2026-08-08T08:00", endsAt: "2026-08-08T09:00" },
+        { id: "trip-invalid", now: NOW },
+      ),
+    /./,
+  )
+})
+
+test("normalizes embedded custom information cards in a stable order", () => {
+  const trip = normalizeTrip(
+    {
+      title: "Trip with notes",
+      status: "planned",
+      infoCards: [
+        { title: "Budget", type: "amount", sortOrder: 4, data: { rows: [{ label: "Hotel", value: 500 }] } },
+        { title: "Schedule", type: "timeline", sortOrder: 1, data: { events: [{ time: "09:00", title: "Leave" }] } },
+        { title: "", type: "checklist", data: {} },
+      ],
+    },
+    { id: "trip-cards", now: NOW },
+  )
+
+  assert.deepEqual(
+    trip.infoCards.map((card) => [card.type, card.title, card.sortOrder]),
+    [
+      ["timeline", "Schedule", 0],
+      ["amount", "Budget", 1],
+    ],
+  )
 })
 
 test("migrates boolean check results and summarizes four check states", () => {

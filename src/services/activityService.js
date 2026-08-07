@@ -76,7 +76,7 @@ export async function get(id) {
 
 export async function getByDateRange(lower, upper) {
   await db.ensureTripV2Data()
-  return db.getAllByIndexRange(STORE, "departureAt", lower, `${upper}\uffff`)
+  return db.getAllByIndexRange(STORE, "startsAt", lower, `${upper}\uffff`)
 }
 
 export function getByMonth(year, month) {

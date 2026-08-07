@@ -25,7 +25,7 @@ const rawOpen = (name, version, upgrade) =>
     request.onerror = () => reject(request.error)
   })
 
-test("upgrades v6 trips and check sessions to v2 and keeps backup preferences", async () => {
+test("upgrades v6 trips to the Trip v3 baseline model revision and keeps backup preferences", async () => {
   const legacy = await rawOpen("asset-tracker-db", 6, (database) => {
     const activities = database.createObjectStore("activities", { keyPath: "id" })
     activities.createIndex("startDate", "startDate")
@@ -77,18 +77,36 @@ test("upgrades v6 trips and check sessions to v2 and keeps backup preferences", 
   const activityService = await import("../src/services/activityService.js")
   const sessionService = await import("../src/services/checkSessionService.js")
   const backupService = await import("../src/services/backupService.js")
+  const nodeService = await import("../src/services/spaceNodeService.js")
   const database = await databaseModule.getDb()
 
-  assert.equal(database.version, 7)
+  assert.equal(database.version, 8)
   assert.ok(database.transaction("activities").objectStore("activities").indexNames.contains("departureAt"))
+  assert.ok(database.transaction("activities").objectStore("activities").indexNames.contains("startsAt"))
+  assert.ok(database.transaction("activities").objectStore("activities").indexNames.contains("endsAt"))
   assert.ok(database.transaction("checkSessions").objectStore("checkSessions").indexNames.contains("kind"))
 
   const migrated = await activityService.get("trip-legacy")
-  assert.equal(migrated.modelVersion, 2)
+  assert.equal(migrated.modelVersion, 3)
+  assert.equal(migrated.startsAt, "2026-08-08T09:00")
+  assert.equal(migrated.endsAt, "2026-08-09T18:00")
   assert.equal(migrated.departureAt, "2026-08-08T09:00")
   assert.equal(migrated.returnAt, "2026-08-09T18:00")
   assert.equal(migrated.packingItems[0].itemId, "item-1")
   assert.equal(migrated.packingItems[0].containerId, "bag-1")
+
+  const storedItem = await databaseModule.get("items", "item-1")
+  await databaseModule.put("items", { ...storedItem, locationNodeId: "bag-1" })
+  await databaseModule.put("spaceNodes", {
+    id: "pouch-1",
+    sectionId: "section-bags",
+    parentId: "bag-1",
+    kind: "container",
+    mobility: "mobile",
+    name: "Inner pouch",
+  })
+  await databaseModule.put("items", { id: "item-2", name: "Cable", locationNodeId: "pouch-1" })
+  assert.deepEqual((await nodeService.getContainedItems("bag-1")).map((item) => item.id).sort(), ["item-1", "item-2"])
 
   const oldSession = (await sessionService.getByPlan("trip-legacy"))[0]
   assert.equal(oldSession.modelVersion, 2)
@@ -105,7 +123,7 @@ test("upgrades v6 trips and check sessions to v2 and keeps backup preferences", 
     destination: "营地",
     packingItems: [{ itemId: "item-1", containerId: "bag-1", starred: true }],
   })
-  assert.equal(created.modelVersion, 2)
+  assert.equal(created.modelVersion, 3)
   assert.equal(created.packingItems[0].nameSnapshot, "护照")
   assert.equal(created.containerRefs[0].nameSnapshot, "通勤背包")
 
@@ -124,7 +142,7 @@ test("upgrades v6 trips and check sessions to v2 and keeps backup preferences", 
     JSON.stringify({ departureReminder: "previous_evening", endReminder: "off", reminderTime: "20:30" }),
   )
   const backup = await backupService.createBackup()
-  assert.equal(backup.database.version, 7)
+  assert.equal(backup.database.version, 8)
   assert.ok("asset-tracker-trip-preferences" in backup.data.localStorage)
 
   await databaseModule.closeDb()

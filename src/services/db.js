@@ -3,7 +3,7 @@ import { normalizeItem } from "../domain/itemModel.js"
 import { normalizeCheckSession, normalizeTrip } from "../domain/tripModel.js"
 
 export const DB_NAME = "asset-tracker-db"
-export const DB_VERSION = 7
+export const DB_VERSION = 8
 export const STORE_NAMES = [
   "items",
   "checklists",
@@ -268,6 +268,8 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
   ensureIndex(activities, "startDate", "startDate")
   ensureIndex(activities, "departureAt", "departureAt")
   ensureIndex(activities, "returnAt", "returnAt")
+  ensureIndex(activities, "startsAt", "startsAt")
+  ensureIndex(activities, "endsAt", "endsAt")
   ensureIndex(activities, "type", "type")
   ensureIndex(activities, "status", "status")
 
@@ -307,7 +309,7 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
     migrateLegacyLocationRecords(transaction)
   }
 
-  if (oldVersion < 7) migrateLegacyTripData(transaction, new Date().toISOString())
+  if (oldVersion < 8) migrateLegacyTripData(transaction, new Date().toISOString())
 }
 
 export function getDb() {
@@ -426,7 +428,12 @@ export async function ensureTripV2Data() {
       const entriesCurrent = (activity.packingItems || []).every(
         (entry) => entry.id && entry.containerId && Object.hasOwn(entry, "starred"),
       )
-      if (activity.modelVersion === 2 && entriesCurrent) continue
+      const routeCurrent =
+        activity.modelVersion === 3 &&
+        activity.startsAt !== undefined &&
+        activity.endsAt !== undefined &&
+        activity.legs?.length
+      if (routeCurrent && entriesCurrent) continue
       try {
         await activityStore.put(normalizeTrip(activity, { id: activity.id, now }))
       } catch (error) {

@@ -2,9 +2,10 @@
 import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useActivityStore } from "@/stores/useActivityStore"
-import { getCheckKindForTrip, getCheckSummary } from "@/domain/tripModel"
+import { getCheckKindForTrip, getCheckSummary, getTripEndAt, getTripLegs, getTripStartAt } from "@/domain/tripModel"
 import * as sessionService from "@/services/checkSessionService"
 import ItemEditSheet from "@/components/item/ItemEditSheet.vue"
+import TripCarryListEditor from "@/components/trip/TripCarryListEditor.vue"
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +16,7 @@ const showNewItem = ref(false)
 const pendingNewItem = ref(null)
 const showTargetSheet = ref(false)
 const message = ref("")
+const showCarryModal = ref(false)
 
 const typeMeta = {
   commute: ["通勤", "🚇"],
@@ -31,6 +33,9 @@ const groups = computed(() =>
     items: (trip.value?.packingItems || []).filter((entry) => entry.containerId === container.containerId),
   })),
 )
+const legs = computed(() => getTripLegs(trip.value))
+const outboundLeg = computed(() => legs.value.find((leg) => leg.direction === "outbound") || legs.value[0] || null)
+const returnLeg = computed(() => legs.value.find((leg) => leg.direction === "return") || null)
 const currentCheckKind = computed(() => getCheckKindForTrip(trip.value))
 const latestSession = computed(
   () =>
@@ -41,13 +46,15 @@ const latestSession = computed(
 const latestSummary = computed(() => getCheckSummary(latestSession.value))
 const checkLabel = computed(() => {
   if (currentCheckKind.value === "anytime") return "随时核对"
-  if (currentCheckKind.value === "end") return trip.value?.tripMode === "round_trip" ? "结束核对" : "结束核对"
+  if (currentCheckKind.value === "end") return "结束核对"
   return "出发核对"
 })
 const durationText = computed(() => {
-  if (!trip.value?.departureAt || !trip.value?.returnAt) return "—"
-  const start = new Date(trip.value.departureAt)
-  const end = new Date(trip.value.returnAt)
+  const startValue = getTripStartAt(trip.value)
+  const endValue = getTripEndAt(trip.value)
+  if (!startValue || !endValue || trip.value?.endTimePending) return "待补充"
+  const start = new Date(startValue)
+  const end = new Date(endValue)
   const minutes = Math.round((end - start) / 60_000)
   if (!Number.isFinite(minutes) || minutes < 0) return "—"
   const hours = Math.floor(minutes / 60)
@@ -84,8 +91,9 @@ function typeIcon() {
 }
 
 function phaseHint() {
-  if (!trip.value?.departureAt) return "时间待完善"
-  const departure = new Date(trip.value.departureAt)
+  const startAt = getTripStartAt(trip.value)
+  if (!startAt) return "时间待完善"
+  const departure = new Date(startAt)
   const diff = departure - new Date()
   if (diff > 0 && diff < 86_400_000) return `${Math.max(1, Math.round(diff / 60_000))} 分钟后出发`
   if (diff > 0) return `${Math.ceil(diff / 86_400_000)} 天后出发`
@@ -94,7 +102,11 @@ function phaseHint() {
 }
 
 function openCarryList() {
-  router.push({ path: `/plans/${trip.value.id}/carry`, query: { return: route.fullPath } })
+  showCarryModal.value = true
+}
+
+function onCarryUpdated(updatedTrip) {
+  if (updatedTrip) trip.value = updatedTrip
 }
 
 function startCheck() {
@@ -156,6 +168,19 @@ function cardRows(card) {
 function cardTimeline(card) {
   return card.data?.pages?.[0]?.events || card.data?.events || []
 }
+
+function cardPages(card) {
+  return card.data?.pages || []
+}
+
+function routeText(leg) {
+  if (!leg) return "路线待完善"
+  return [leg.origin, ...(leg.stops || []).map((stop) => stop.name), leg.destination].filter(Boolean).join(" → ")
+}
+
+function amountTotal(card) {
+  return (card.data?.rows || []).reduce((sum, row) => sum + (Number(row.value) || 0), 0)
+}
 </script>
 
 <template>
@@ -172,24 +197,31 @@ function cardTimeline(card) {
           <span>
             <small>{{ phaseHint() }}</small>
             <b>{{ trip.title }}</b>
-            <em>{{ trip.tripMode === "round_trip" ? "往返" : "单程" }} · {{ groups.length }} 个移动容器</em>
+            <em>{{ trip.journeyType === "round_trip" ? "往返" : "单程" }} · {{ groups.length }} 个移动容器</em>
           </span>
           <i>{{ typeIcon() }} {{ typeLabel() }}</i>
         </div>
-        <div class="route-line">
-          <b>{{ trip.origin || "未设置起点" }}</b
-          ><span></span><em>{{ trip.transportMode || "出行方式待定" }}</em
-          ><span></span><b>{{ trip.destination || "未设置终点" }}</b>
+        <div class="route-summary">
+          <span
+            ><small>{{ trip.journeyType === "round_trip" ? "去程" : "路线" }}</small
+            ><b>{{ routeText(outboundLeg) }}</b></span
+          >
+          <em>{{ outboundLeg?.transportMode || "出行方式待定" }}</em>
+        </div>
+        <div v-if="returnLeg" class="route-summary return-route">
+          <span
+            ><small>返程</small><b>{{ routeText(returnLeg) }}</b></span
+          ><em>{{ returnLeg.transportMode || "未设置" }}</em>
         </div>
         <div class="fact-grid">
           <div>
-            <span>出发时间</span><b>{{ formatDateTime(trip.departureAt) }}</b>
-          </div>
-          <div v-if="trip.tripMode === 'round_trip'">
-            <span>返程时间</span><b>{{ formatDateTime(trip.returnAt) }}</b>
+            <span>开始时间</span><b>{{ formatDateTime(getTripStartAt(trip)) }}</b>
           </div>
           <div>
-            <span>出行方式</span><b>{{ trip.transportMode || "未设置" }}</b>
+            <span>结束时间</span><b>{{ trip.endTimePending ? "待补充" : formatDateTime(getTripEndAt(trip)) }}</b>
+          </div>
+          <div v-if="returnLeg">
+            <span>返程出发</span><b>{{ formatDateTime(returnLeg.departureAt) }}</b>
           </div>
           <div>
             <span>行程时长</span><b>{{ durationText }}</b>
@@ -264,11 +296,27 @@ function cardTimeline(card) {
             >
           </div>
         </div>
+        <div v-else-if="card.type === 'paged_schedule'" class="page-schedule">
+          <section v-for="page in cardPages(card)" :key="page.id || page.title">
+            <b>{{ page.title }}</b>
+            <div v-for="event in page.events || []" :key="event.id || `${event.time}-${event.title}`">
+              <time>{{ event.time }}</time
+              ><span>{{ event.title }}</span>
+            </div>
+          </section>
+        </div>
         <div v-else-if="card.type === 'checklist'" class="info-list">
           <div v-for="item in card.data?.items || []" :key="item.id || item.label">
             <span>{{ item.done ? "✓" : "○" }}</span
             ><b>{{ item.label || item.text }}</b>
           </div>
+        </div>
+        <div v-else-if="card.type === 'amount'" class="amount-card">
+          <div v-for="row in cardRows(card)" :key="row.id || row.label">
+            <span>{{ row.label }}</span
+            ><b>¥{{ row.value }}</b>
+          </div>
+          <strong>合计 ¥{{ amountTotal(card) }}</strong>
         </div>
         <div v-else class="key-values">
           <div v-for="row in cardRows(card)" :key="row.id || row.label">
@@ -297,6 +345,13 @@ function cardTimeline(card) {
       </section>
     </div>
     <div v-if="message" class="detail-toast">{{ message }}</div>
+    <TripCarryListEditor
+      v-if="showCarryModal && trip"
+      :trip-id="trip.id"
+      embedded
+      @updated="onCarryUpdated"
+      @close="showCarryModal = false"
+    />
   </div>
 </template>
 
@@ -305,8 +360,8 @@ function cardTimeline(card) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f7f5ef;
-  color: #28251f;
+  background: #f6f5f1;
+  color: #111827;
 }
 .detail-topbar {
   flex: none;
@@ -316,7 +371,7 @@ function cardTimeline(card) {
   grid-template-columns: 48px 1fr 48px;
   align-items: end;
   background: #fff;
-  border-bottom: 1px solid #e8e4db;
+  border-bottom: 1px solid #e5e7eb;
 }
 .detail-topbar h1 {
   margin: 0;
@@ -326,7 +381,7 @@ function cardTimeline(card) {
 .detail-topbar button {
   border: 0;
   background: transparent;
-  color: #197b72;
+  color: #2563eb;
   font-weight: 700;
 }
 .detail-topbar button:first-child {
@@ -342,8 +397,8 @@ function cardTimeline(card) {
 .hero-card,
 .detail-card,
 .check-card {
-  border: 1px solid #e3dfd6;
-  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   background: #fff;
   box-shadow: 0 3px 12px rgba(54, 50, 40, 0.03);
 }
@@ -362,7 +417,7 @@ function cardTimeline(card) {
   display: block;
 }
 .hero-head small {
-  color: #1b8b80;
+  color: #2563eb;
   font-size: 10px;
   font-weight: 700;
 }
@@ -372,39 +427,55 @@ function cardTimeline(card) {
 }
 .hero-head em {
   margin-top: 5px;
-  color: #8f8b83;
+  color: #6b7280;
   font-size: 10px;
   font-style: normal;
 }
 .hero-head > i {
   padding: 5px 8px;
   border-radius: 9px;
-  background: #e7f3f1;
-  color: #287c74;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 10px;
   font-style: normal;
   font-weight: 700;
 }
-.route-line {
-  display: grid;
-  grid-template-columns: auto minmax(12px, 1fr) auto minmax(12px, 1fr) auto;
+.route-summary {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 17px 0;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  border-radius: 12px;
+  padding: 10px 11px;
+  background: #f9fafb;
 }
-.route-line b {
-  max-width: 90px;
+.route-summary.return-route {
+  margin-top: 7px;
+  background: #eff6ff;
+}
+.route-summary span,
+.route-summary small,
+.route-summary b {
+  display: block;
+}
+.route-summary span {
+  min-width: 0;
+}
+.route-summary small {
+  margin-bottom: 3px;
+  color: #9ca3af;
+  font-size: 9px;
+}
+.route-summary b {
   overflow: hidden;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.route-line span {
-  height: 1px;
-  background: #d8d4cb;
-}
-.route-line em {
-  color: #77736b;
+.route-summary em {
+  flex: none;
+  color: #6b7280;
   font-size: 9px;
   font-style: normal;
 }
@@ -413,19 +484,19 @@ function cardTimeline(card) {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding-top: 13px;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
 }
 .fact-grid div {
   padding: 9px;
   border-radius: 12px;
-  background: #faf8f4;
+  background: #f9fafb;
 }
 .fact-grid span,
 .fact-grid b {
   display: block;
 }
 .fact-grid span {
-  color: #99958d;
+  color: #9ca3af;
   font-size: 9px;
 }
 .fact-grid b {
@@ -443,7 +514,7 @@ function cardTimeline(card) {
   font-size: 15px;
 }
 .detail-heading span {
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .packing-card {
@@ -457,7 +528,7 @@ function cardTimeline(card) {
   align-items: center;
   gap: 10px;
   border: 0;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
   padding: 9px 13px;
   background: #fff;
   text-align: left;
@@ -471,7 +542,7 @@ function cardTimeline(card) {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #f0ece4;
+  background: #f3f4f6;
   font-size: 19px;
 }
 .packing-card b,
@@ -483,21 +554,21 @@ function cardTimeline(card) {
 }
 .packing-card small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .packing-card i {
-  color: #aaa69e;
+  color: #9ca3af;
   font-style: normal;
 }
 .packing-card button.list-action > span:first-child {
-  background: #f5e9dd;
-  color: #9b692e;
+  background: #eff6ff;
+  color: #2563eb;
 }
 .empty-packing {
   padding: 22px;
   text-align: center;
-  color: #aaa69e;
+  color: #9ca3af;
   font-size: 11px;
 }
 .check-card {
@@ -526,7 +597,7 @@ function cardTimeline(card) {
   display: block;
   height: 100%;
   border-radius: 7px;
-  background: #1b8b80;
+  background: #2563eb;
 }
 .check-tags {
   display: flex;
@@ -537,8 +608,8 @@ function cardTimeline(card) {
 .check-tags span {
   padding: 4px 7px;
   border-radius: 8px;
-  background: #e7f3f1;
-  color: #23766f;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 9px;
 }
 .check-tags span.danger {
@@ -554,13 +625,13 @@ function cardTimeline(card) {
   min-height: 48px;
   border: 0;
   border-radius: 15px;
-  background: #1b8b80;
+  background: #2563eb;
   color: #fff;
   font-size: 13px;
   font-weight: 750;
 }
 .check-card > button:disabled {
-  background: #c9c6be;
+  background: #d1d5db;
 }
 .info-card {
   margin-bottom: 10px;
@@ -580,11 +651,11 @@ function cardTimeline(card) {
 }
 .info-card header small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 9px;
 }
 .info-card header i {
-  color: #aaa69e;
+  color: #9ca3af;
   font-style: normal;
 }
 .info-card > p {
@@ -601,14 +672,14 @@ function cardTimeline(card) {
   justify-content: space-between;
   gap: 12px;
   padding: 9px 0;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
   font-size: 11px;
 }
 .key-values {
   margin-top: 10px;
 }
 .key-values span {
-  color: #8f8b83;
+  color: #6b7280;
 }
 .mini-timeline {
   margin-top: 12px;
@@ -620,7 +691,7 @@ function cardTimeline(card) {
   padding: 7px 0;
 }
 .mini-timeline time {
-  color: #1b8b80;
+  color: #2563eb;
   font-size: 10px;
   font-weight: 700;
 }
@@ -633,8 +704,55 @@ function cardTimeline(card) {
 }
 .mini-timeline small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 9px;
+}
+.page-schedule {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.page-schedule > section {
+  min-width: 160px;
+  border-radius: 12px;
+  padding: 10px;
+  background: #f9fafb;
+}
+.page-schedule > section > b {
+  color: #2563eb;
+  font-size: 11px;
+}
+.page-schedule > section > div {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 7px;
+  padding-top: 7px;
+  font-size: 10px;
+}
+.page-schedule time {
+  color: #9ca3af;
+}
+.amount-card {
+  margin-top: 10px;
+}
+.amount-card > div {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #f0f1f3;
+  padding: 8px 0;
+  font-size: 11px;
+}
+.amount-card > div span {
+  color: #6b7280;
+}
+.amount-card > strong {
+  display: block;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 9px;
+  text-align: right;
+  color: #2563eb;
+  font-size: 12px;
 }
 .delete-trip {
   width: 100%;
@@ -649,7 +767,7 @@ function cardTimeline(card) {
   flex: 1;
   display: grid;
   place-items: center;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 12px;
 }
 .target-layer {
@@ -678,7 +796,7 @@ function cardTimeline(card) {
   font-size: 17px;
 }
 .target-layer p {
-  color: #8f8b83;
+  color: #6b7280;
   font-size: 11px;
 }
 .target-layer button {
@@ -689,7 +807,7 @@ function cardTimeline(card) {
   align-items: center;
   gap: 10px;
   border: 0;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
   background: #fff;
   text-align: left;
 }
@@ -699,10 +817,10 @@ function cardTimeline(card) {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #f0ece4;
+  background: #f3f4f6;
 }
 .target-layer button i {
-  color: #aaa69e;
+  color: #9ca3af;
   font-style: normal;
 }
 .detail-toast {

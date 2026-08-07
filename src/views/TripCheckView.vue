@@ -204,14 +204,14 @@ function leave() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fbfaf7;
-  color: #28251f;
+  background: #f6f5f1;
+  color: #111827;
 }
 .check-loading {
   flex: 1;
   display: grid;
   place-items: center;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 12px;
 }
 .check-topbar {
@@ -224,20 +224,20 @@ function leave() {
 }
 .check-topbar span {
   text-align: center;
-  color: #77736b;
+  color: #6b7280;
   font-size: 12px;
   font-weight: 700;
 }
 .check-topbar button {
   border: 0;
   background: transparent;
-  color: #197b72;
+  color: #2563eb;
   font-size: 12px;
   font-weight: 700;
 }
 .check-topbar button:first-child {
   text-align: left;
-  color: #77736b;
+  color: #6b7280;
   font-size: 25px;
 }
 .check-progress {
@@ -246,13 +246,13 @@ function leave() {
   margin: 4px 18px 0;
   overflow: hidden;
   border-radius: 7px;
-  background: #e8e5de;
+  background: #e5e7eb;
 }
 .check-progress span {
   display: block;
   height: 100%;
   border-radius: 7px;
-  background: #1b8b80;
+  background: #2563eb;
   transition: width 0.2s ease;
 }
 .check-main {
@@ -267,7 +267,7 @@ function leave() {
 }
 .check-group {
   margin-bottom: 24px;
-  color: #1b8b80;
+  color: #2563eb;
   font-size: 11px;
   font-weight: 750;
 }
@@ -278,10 +278,10 @@ function leave() {
   place-items: center;
   overflow: hidden;
   border-radius: 34px;
-  background: #e7f3f1;
-  color: #377f78;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 44px;
-  box-shadow: 0 12px 28px rgba(31, 101, 94, 0.1);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.1);
 }
 .item-orb img {
   width: 100%;
@@ -306,8 +306,8 @@ function leave() {
 .entry-tags span {
   padding: 5px 8px;
   border-radius: 9px;
-  background: #eeece6;
-  color: #77736b;
+  background: #f3f4f6;
+  color: #6b7280;
   font-size: 9px;
 }
 .entry-tags span.starred {
@@ -333,15 +333,15 @@ function leave() {
   color: #b8433e;
 }
 .check-actions .skipped {
-  border: 1px solid #ddd8cf;
+  border: 1px solid #d1d5db;
   background: #fff;
-  color: #77736b;
+  color: #6b7280;
 }
 .check-actions .confirmed {
   border: 0;
-  background: #1b8b80;
+  background: #2563eb;
   color: #fff;
-  box-shadow: 0 8px 18px rgba(27, 139, 128, 0.18);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
 }
 .summary-page {
   flex: 1;
@@ -356,8 +356,8 @@ function leave() {
   place-items: center;
   margin: 12px auto 18px;
   border-radius: 24px;
-  background: #e7f3f1;
-  color: #1b8b80;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 32px;
   font-weight: 800;
 }
@@ -367,7 +367,7 @@ function leave() {
 }
 .summary-page header p {
   margin: 7px 0 0;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .result-grid {
@@ -378,7 +378,7 @@ function leave() {
 }
 .result-grid div {
   padding: 15px 6px;
-  border: 1px solid #e5e1d8;
+  border: 1px solid #e5e7eb;
   border-radius: 17px;
   background: #fff;
 }
@@ -387,7 +387,7 @@ function leave() {
   display: block;
 }
 .result-grid b {
-  color: #1b8b80;
+  color: #2563eb;
   font-size: 24px;
 }
 .result-grid b.danger {
@@ -398,13 +398,13 @@ function leave() {
 }
 .result-grid span {
   margin-top: 5px;
-  color: #8f8b83;
+  color: #6b7280;
   font-size: 10px;
 }
 .needs-card {
   overflow: hidden;
-  border: 1px solid #e5e1d8;
-  border-radius: 19px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   background: #fff;
   text-align: left;
 }
@@ -419,7 +419,7 @@ function leave() {
   font-size: 14px;
 }
 .needs-heading span {
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .needs-card > div:not(.needs-heading) {
@@ -428,7 +428,7 @@ function leave() {
   align-items: center;
   justify-content: space-between;
   padding: 10px 13px;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
 }
 .needs-card b,
 .needs-card small {
@@ -439,7 +439,7 @@ function leave() {
 }
 .needs-card small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 9px;
 }
 .needs-card em {
@@ -459,12 +459,12 @@ function leave() {
 }
 .retry-button {
   border: 0;
-  background: #1b8b80;
+  background: #2563eb;
   color: #fff;
 }
 .return-button {
-  border: 1px solid #dcd8cf;
+  border: 1px solid #d1d5db;
   background: #fff;
-  color: #5f5b54;
+  color: #4b5563;
 }
 </style>

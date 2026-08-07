@@ -9,6 +9,12 @@ import * as sectionService from "@/services/homeSectionService"
 const route = useRoute()
 const router = useRouter()
 const store = useActivityStore()
+const props = defineProps({
+  tripId: { type: String, default: "" },
+  containerId: { type: String, default: "" },
+  embedded: { type: Boolean, default: false },
+})
+const emit = defineEmits(["close", "saved"])
 const trip = ref(null)
 const items = ref([])
 const nodes = ref([])
@@ -19,9 +25,11 @@ const cart = ref([])
 const sectionId = ref("")
 const nodeId = ref("")
 const saving = ref(false)
+const resolvedTripId = computed(() => props.tripId || route.params.id)
+const resolvedContainerId = computed(() => props.containerId || route.params.containerId)
 
 const targetContainer = computed(() =>
-  trip.value?.containerRefs?.find((reference) => reference.containerId === route.params.containerId),
+  trip.value?.containerRefs?.find((reference) => reference.containerId === resolvedContainerId.value),
 )
 const alreadyAddedIds = computed(
   () => new Set((trip.value?.packingItems || []).map((entry) => entry.itemId).filter(Boolean)),
@@ -55,12 +63,12 @@ const layoutItems = computed(() => {
 
 onMounted(async () => {
   ;[trip.value, items.value, nodes.value, sections.value] = await Promise.all([
-    store.loadById(route.params.id),
+    store.loadById(resolvedTripId.value),
     itemService.getAllItems(),
     nodeService.getAllNodes(),
     sectionService.getAllSections(),
   ])
-  if (!targetContainer.value) router.replace(`/plans/${route.params.id}/carry`)
+  if (!targetContainer.value) closePicker()
 })
 
 function itemImage(item) {
@@ -105,7 +113,7 @@ async function addItems() {
     const createdAt = new Date().toISOString()
     const additions = cart.value.map(({ item, starred }) => ({
       itemId: item.id,
-      containerId: route.params.containerId,
+      containerId: resolvedContainerId.value,
       nameSnapshot: item.name,
       categorySnapshot: item.category,
       imageSnapshot: itemImage(item),
@@ -116,10 +124,17 @@ async function addItems() {
       containerRefs: trip.value.containerRefs,
       packingItems: [...trip.value.packingItems, ...additions],
     })
-    router.push(typeof route.query.return === "string" ? route.query.return : `/plans/${trip.value.id}/carry`)
+    emit("saved", trip.value)
+    closePicker()
   } finally {
     saving.value = false
   }
+}
+
+function closePicker() {
+  if (props.embedded) emit("close")
+  else if (window.history.length > 1) router.back()
+  else router.replace(`/plans/${resolvedTripId.value}/carry`)
 }
 
 function availabilityLabel(item) {
@@ -130,9 +145,9 @@ function availabilityLabel(item) {
 </script>
 
 <template>
-  <div class="library-page">
+  <div class="library-page" :class="{ embedded: props.embedded }">
     <header class="library-topbar">
-      <button aria-label="返回" @click="router.back()">‹</button>
+      <button aria-label="返回物品清单" @click="closePicker">‹</button>
       <h1>选择物品</h1>
       <button @click="cart = []">清除</button>
     </header>
@@ -272,8 +287,15 @@ function availabilityLabel(item) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f7f5ef;
-  color: #28251f;
+  background: #f6f5f1;
+  color: #111827;
+}
+.library-page.embedded {
+  min-height: 0;
+  border-radius: 24px 24px 0 0;
+}
+.library-page.embedded .library-topbar {
+  padding-top: 12px;
 }
 .library-topbar {
   flex: none;
@@ -283,7 +305,7 @@ function availabilityLabel(item) {
   grid-template-columns: 48px 1fr 48px;
   align-items: end;
   background: #fff;
-  border-bottom: 1px solid #e8e4db;
+  border-bottom: 1px solid #e5e7eb;
 }
 .library-topbar h1 {
   margin: 0;
@@ -293,7 +315,7 @@ function availabilityLabel(item) {
 .library-topbar button {
   border: 0;
   background: transparent;
-  color: #197b72;
+  color: #2563eb;
   font-weight: 700;
 }
 .library-topbar button:first-child {
@@ -312,8 +334,8 @@ function availabilityLabel(item) {
   align-items: center;
   gap: 11px;
   padding: 13px;
-  border: 1px solid #e5e1d8;
-  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   background: #fff;
 }
 .target-card > span:first-child {
@@ -334,7 +356,7 @@ function availabilityLabel(item) {
 }
 .target-card small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .library-tabs {
@@ -343,19 +365,19 @@ function availabilityLabel(item) {
   margin: 14px 0 10px;
   padding: 3px;
   border-radius: 13px;
-  background: #eae7df;
+  background: #f3f4f6;
 }
 .library-tabs button {
   border: 0;
   border-radius: 10px;
   padding: 9px;
   background: transparent;
-  color: #77736b;
+  color: #6b7280;
   font-size: 12px;
 }
 .library-tabs button.active {
   background: #fff;
-  color: #176f67;
+  color: #2563eb;
   font-weight: 750;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -365,10 +387,10 @@ function availabilityLabel(item) {
   align-items: center;
   min-height: 46px;
   padding: 0 12px;
-  border: 1px solid #dfdbd2;
-  border-radius: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
   background: #fff;
-  color: #99958d;
+  color: #9ca3af;
 }
 .library-search input {
   min-width: 0;
@@ -381,8 +403,8 @@ function availabilityLabel(item) {
 .cart-card {
   margin-top: 10px;
   overflow: hidden;
-  border: 1px solid #e5e1d8;
-  border-radius: 19px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   background: #fff;
 }
 .result-row {
@@ -392,7 +414,7 @@ function availabilityLabel(item) {
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
 }
 .result-row:first-child {
   border-top: 0;
@@ -404,8 +426,8 @@ function availabilityLabel(item) {
   place-items: center;
   overflow: hidden;
   border-radius: 13px;
-  background: #e7f3f1;
-  color: #307c75;
+  background: #eff6ff;
+  color: #2563eb;
 }
 .result-image img {
   width: 100%;
@@ -425,7 +447,7 @@ function availabilityLabel(item) {
 .result-row small,
 .cart-row small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .result-row > button {
@@ -433,19 +455,19 @@ function availabilityLabel(item) {
   height: 34px;
   border: 0;
   border-radius: 11px;
-  background: #e7f3f1;
-  color: #287f77;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 18px;
 }
 .result-row > button:disabled {
   background: transparent;
-  color: #aaa69e;
+  color: #9ca3af;
   font-size: 10px;
 }
 .empty-results {
   padding: 24px 14px;
   text-align: center;
-  color: #aaa69e;
+  color: #9ca3af;
   font-size: 11px;
   line-height: 1.7;
 }
@@ -458,12 +480,12 @@ function availabilityLabel(item) {
 .drill-heading button {
   border: 0;
   background: transparent;
-  color: #197b72;
+  color: #2563eb;
   font-size: 12px;
   font-weight: 700;
 }
 .drill-heading span {
-  color: #77736b;
+  color: #6b7280;
   font-size: 11px;
 }
 .space-row {
@@ -474,7 +496,7 @@ function availabilityLabel(item) {
   align-items: center;
   gap: 10px;
   border: 0;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
   padding: 9px 12px;
   background: #fff;
   text-align: left;
@@ -488,7 +510,7 @@ function availabilityLabel(item) {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #f0ece4;
+  background: #f3f4f6;
 }
 .space-row b,
 .space-row small {
@@ -499,7 +521,7 @@ function availabilityLabel(item) {
 }
 .space-row small {
   margin-top: 3px;
-  color: #99958d;
+  color: #9ca3af;
   font-size: 10px;
 }
 .space-row i {
@@ -517,7 +539,7 @@ function availabilityLabel(item) {
   font-size: 15px;
 }
 .cart-heading span {
-  color: #99958d;
+  color: #9ca3af;
   font-size: 11px;
 }
 .cart-row {
@@ -527,7 +549,7 @@ function availabilityLabel(item) {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-top: 1px solid #eeeae2;
+  border-top: 1px solid #e5e7eb;
 }
 .cart-row:first-child {
   border-top: 0;
@@ -555,7 +577,7 @@ function availabilityLabel(item) {
   right: 0;
   bottom: 0;
   padding: 12px 14px max(12px, env(safe-area-inset-bottom));
-  border-top: 1px solid #e5e1d8;
+  border-top: 1px solid #e5e7eb;
   background: rgba(255, 255, 255, 0.97);
 }
 .library-footer button {
@@ -563,12 +585,12 @@ function availabilityLabel(item) {
   min-height: 50px;
   border: 0;
   border-radius: 16px;
-  background: #1b8b80;
+  background: #2563eb;
   color: #fff;
   font-size: 13px;
   font-weight: 750;
 }
 .library-footer button:disabled {
-  background: #c9c6be;
+  background: #d1d5db;
 }
 </style>

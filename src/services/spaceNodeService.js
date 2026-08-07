@@ -156,6 +156,13 @@ export async function getNodeSummary(id) {
   }
 }
 
+export async function getContainedItems(id) {
+  const [node, nodes, items] = await Promise.all([db.get(S, id), db.getAll(S), db.getAll("items")])
+  if (!node) throw new Error("空间不存在")
+  const targetIds = new Set([id, ...descendantIds(nodes, id)])
+  return items.filter((item) => targetIds.has(item.locationNodeId))
+}
+
 export function getSuggestedChildKind(node) {
   if (!node || node.kind === "space") return { kind: "area", label: "区域" }
   return { kind: "container", label: node.kind === "area" ? "容器" : "子容器" }

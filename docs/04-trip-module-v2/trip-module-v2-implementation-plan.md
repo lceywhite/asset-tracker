@@ -1,22 +1,22 @@
 # 行程模块 v2 工程接入计划
 
-更新日期：2026-08-06
-产品基线：行程模块 v2 原型第 11 版，已确认
-工程状态：阶段 0—6 的 Windows/Web 范围已完成；iOS 真机验收按产品约定并入后续单人 MVP 集中验收
+更新日期：2026-08-07
+产品基线：历史接入计划；当前正式产品基线已升级为行程模块 v3
+工程状态：阶段 0—7 的 Windows/Web 范围已完成；iOS 真机验收按产品约定并入后续单人 MVP 集中验收
 
 ## 1. 唯一实现依据
 
 工程接入按以下优先级执行：
 
-1. `prototypes/trip-module-v2-timeline.html`：最终确认的界面、布局和入口；
-2. `trip-module-v2-action-record-design.md`：产品定位、字段和核对规则；
-3. `trip-module-v2-iteration-log.md`：被调整、被否决和最终保留的决策；
+1. `trip-module-v2-action-record-design.md`：产品定位、当前字段、核对规则和 2026-08-07 工程校正；
+2. `trip-module-v2-iteration-log.md`：被调整、被否决和最终保留的决策；
+3. `prototypes/trip-module-v2-timeline.html`：第 11 版初始界面、布局和入口参考；
 4. `references/trip-module-v2-conversation-reference.md`：需求原文与回复追溯；
 5. 本实施计划：代码拆分、数据迁移、测试和交付顺序。
 
 历史第一版原型和已否决的完整旅行方案不作为实现依据。
 
-## 2. 当前代码与确认设计的差距
+## 2. 接入前代码与确认设计的差距（已关闭）
 
 | 范围     | 当前正式代码               | 行程 v2 目标                                      |
 | -------- | -------------------------- | ------------------------------------------------- |
@@ -35,23 +35,24 @@
 
 ## 3. 目标数据模型
 
-### Plan modelVersion 2
+### Plan modelVersion 3
 
 继续使用 `activities` 表，避免无必要地复制一套行程主表；记录升级为：
 
 ```text
 Plan
 ├── id / title / type / status
-├── tripMode: one_way | round_trip
-├── departureAt / returnAt
-├── origin / destination / transportMode
+├── journeyType: one_way | round_trip
+├── startsAt / endsAt
+├── legs[]
+│   └── direction / origin / destination / stops[] / transportMode / departureAt / arrivalAt
 ├── containerRefs[]
-│   └── containerId / nameSnapshot / iconSnapshot / sortOrder
+│   └── containerId / nameSnapshot / iconSnapshot / importedAll / importedItemIds[] / sortOrder
 ├── packingItems[]
 │   └── id / itemId / containerId / nameSnapshot / categorySnapshot / starred / addedAt
 ├── notes
 ├── infoCards[]
-├── modelVersion: 2
+├── modelVersion: 3
 └── createdAt / updatedAt
 ```
 
@@ -60,6 +61,9 @@ Plan
 - `packingItems.id` 是本次行程条目 ID，核对结果始终引用它；
 - `itemId` 引用物品库中的稳定物品 ID，名称与分类快照用于物品被改名或删除后的历史阅读；
 - `containerId` 必须引用移动容器；行程清单不允许出现无容器条目；
+- 任何单程或往返行程都保存完整 `startsAt` 与 `endsAt`，不再把“单程”误解为没有结束时间；
+- 往返由去程和返程两条 `legs` 表达，途经点属于具体路段；旧字段继续作为兼容别名读取；
+- 选择现有移动容器时，默认把该容器及全部下级空间中的物品加入行程，并保存导入快照；只有用户主动点击“检查更新”才重新同步；
 - 移动行程内分组不改变物品档案的真实位置；
 - 从行程中删除只删除行程条目，不删除物品档案；
 - 新建移动容器通过物品模块的空间服务完成，并同步进入物品空间。
@@ -81,8 +85,8 @@ CheckSession
 
 ### 数据库与备份
 
-- IndexedDB 已升级为 v7，增加 `departureAt`、`returnAt`、`type` 和核对 `kind` 索引，并在升级事务中统一迁移；
-- 旧 `startDate`、`endDate`、`startTime`、`endTime` 在迁移后保留兼容读取，不凭空补造缺失时间；
+- IndexedDB 已升级为 v8，增加 `startsAt`、`endsAt` 索引，并保留 `departureAt`、`returnAt`、`type` 和核对 `kind` 兼容索引；
+- 旧 `startDate`、`endDate`、`startTime`、`endTime` 会统一迁移为起止周期；旧往返结束时间在无法区分返程出发/到达时作为兼容值保留；
 - 旧的无容器条目进入迁移待处理容器，不直接丢失；首次编辑时要求用户归入移动容器；
 - 备份格式继续使用 v3，因为没有新增存储；导出范围增加行程偏好，并已验证旧备份恢复后的行程迁移；
 - 所有迁移已经先由自动化测试覆盖，再接入正式升级逻辑。
@@ -93,8 +97,8 @@ CheckSession
 | --------------------------- | ---------------------------------------------------- |
 | `TripsView.vue`             | 搜索、当周日期轴、展开月历和行程时间轴卡片           |
 | `TripEditorView.vue`        | 新建/编辑行程的基本信息、行程信息和通用信息          |
-| `TripCarryListEditor.vue`   | 移动容器分组、星标、全选、批量移动和移出             |
-| `TripItemLibraryPicker.vue` | 搜索、按空间下钻、购物车式本次添加                   |
+| `TripCarryListEditor.vue`   | 当前页弹窗中的移动容器分组、星标、批量操作和容器移除 |
+| `TripItemLibraryPicker.vue` | 弹窗内继续下钻的搜索、空间查找和购物车式本次添加     |
 | `TripDetailView.vue`        | 行程档案、容器清单、核对状态和通用信息卡片           |
 | `TripCheckView.vue`         | 全屏逐项核对与结果处理                               |
 | `tripModel.js`              | 默认值、规范化、阶段判断和兼容转换                   |
@@ -121,7 +125,7 @@ CheckSession
 - 接入全局行程偏好；
 - 完成旧数据库和旧备份自动化测试。
 
-退出条件：不换界面也能安全创建、读取、更新和恢复 Plan v2。
+退出条件：不换界面也能安全创建、读取、更新和恢复当时的 Plan modelVersion 2；后续已继续迁移到 modelVersion 3。
 
 ### 阶段 2：主页时间轴（已完成）
 
@@ -164,10 +168,23 @@ CheckSession
 ### 阶段 6：回归与交付（Windows/Web 已完成，iOS 延后）
 
 - 单元/集成测试、格式、构建；
-- IndexedDB v6 → v7 与旧备份恢复测试（已完成数据层自动测试）；
+- IndexedDB v6/v7 → v8 与旧备份恢复测试（已完成数据层自动测试）；
 - 390×844 网页核心流程烟雾测试；
 - 行程与物品容器关系、备份/恢复、冷启动回归；
 - 行程 v2 完成后先并入单人 MVP 的 Windows/Web 全流程回归；待整个 MVP 功能完整后，再统一执行 Xcode/iPhone 真机验收。
+
+### 阶段 7：正式预览后的工程校正（Windows/Web 已完成）
+
+- 统一物品模块 v3 的蓝灰视觉组件；
+- 所有行程补齐完整开始/结束时间，往返拆分为去程和返程，并支持途经点；
+- “添加物品”改为先保存草稿再进入二级清单；
+- 现有移动容器默认递归导入全部物品，并保存可主动更新的导入快照；
+- 接入自定义信息卡片编辑；
+- 下拉月历接入连续跨日周期条，时间线同步显示结束时间；
+- 月历周期条补齐多色标题，周日期轴只显示行程圆点，时间轴起止连接改为双色节点虚线；
+- 携带清单改为当前页弹窗，物品库在弹窗内继续下钻；
+- 容器选择改为现有目录优先、按需展开新建字段，并增加明确的容器移除操作；
+- Plan 升级为 modelVersion 3，IndexedDB 升级为 v8，并完成迁移与回归。
 
 ## 6. 本阶段不实现
 
@@ -181,7 +198,7 @@ CheckSession
 
 代码开始后按以下顺序执行：
 
-1. ~~为 Plan v2、CheckSession v2 和迁移写测试；~~
+1. ~~为 Plan、CheckSession v2 和迁移写测试；~~
 2. ~~实现领域规范化和服务层；~~
 3. ~~更新备份兼容；~~
 4. ~~接入主页；~~
@@ -191,12 +208,12 @@ CheckSession
 8. ~~并入单人 MVP 全模块 Web 回归；~~
 9. 形成阶段提交并并入后续集中 iOS 回归。
 
-## 8. 工程实测记录（2026-08-06）
+## 8. 工程实测记录（2026-08-07）
 
-- `npm.cmd run check` 通过：代码检查、格式、15 项自动测试和生产构建全部成功；
+- `npm.cmd run check` 通过：代码检查、格式、19 项自动测试和生产构建全部成功；
 - 390×844 浏览器实测通过时间轴主页、新建草稿、移动容器、购物车式选物、同步星标、批量清除/恢复标记、保存档案、阶段核对、重核未完成项和档案进度回显；
-- 单人 MVP 自动浏览器回归通过旧数据库 v4 → v7、物品 v3、空间核对、行程 v2、四个 Tab、中央加号、备份 v3 和横向溢出检查；
+- 单人 MVP 自动浏览器回归通过旧数据库 v4 → v8、物品 v3、空间核对、行程 v3/Plan modelVersion 3、整包导入、自定义卡片、月历跨日周期条、四个 Tab、中央加号、备份 v3 和横向溢出检查；
 - 浏览器无 Vite 错误覆盖层、无运行时错误；刷新后行程、容器、物品和星标摘要保持一致；
-- 设置页已经显示出发/结束前提醒的统一规则和关闭选项；当前不把规则描述为已经发送系统通知；
+- 设置页已经显示出发和返程/结束前提醒的统一规则和关闭选项；当前不把规则描述为已经发送系统通知；
 - 旧 `TripForm.vue`、列表/月历抬头切换、重复提醒和“组合为新包”已从正式路由代码中删除；
-- 本记录不是原型第 12 版。产品基线仍为行程模块 v2 原型第 11 版。
+- 本记录不是原型第 12 版；v2 第 11 版与工程校正作为历史来源保留，当前正式产品模块已由用户确认为行程 v3。

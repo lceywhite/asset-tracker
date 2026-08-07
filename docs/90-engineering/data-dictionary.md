@@ -1,6 +1,6 @@
 # 单人 MVP 数据字典
 
-数据库名称为 `asset-tracker-db`，当前 schema 版本为 7。
+数据库名称为 `asset-tracker-db`，当前 schema 版本为 8。
 
 ## IndexedDB 数据表
 
@@ -13,7 +13,7 @@
 | rooms           | 唯一 name                                         | 旧常驻位置                    | 兼容旧页面，已迁移为 spaceNodes             |
 | bags            | 唯一 name                                         | 旧移动容器                    | 兼容旧页面，已迁移为 spaceNodes             |
 | locationRecords | itemId/timestamp/fromNodeId/toNodeId              | 物品位置变动历史              | 包含来源、目标、原因和备注                  |
-| activities      | startDate/departureAt/returnAt/type/status        | 正式行程（Plan v2）及稳定条目 | 内部保留旧表名和 startDate 兼容旧页面       |
+| activities      | startsAt/endsAt/type/status                       | 正式行程（Plan v3）及稳定条目 | 内部保留旧表名及旧时间字段作为兼容别名      |
 | checkSessions   | planId/kind/startedAt/updatedAt/status            | 每次出发、途中或结束核对      | 四态结果按 PlanEntry id 保存                |
 | activityItems   | activityId                                        | 旧重复行程条目                | 仅作迁移兼容，不再写入                      |
 | checklists      | type/status                                       | 未接入正式路由的旧清单        | 后续迁移或删除                              |
@@ -66,26 +66,33 @@
 
 每个节点可以有多条布局记录。`placements` 保存直接下级节点的 `nodeId`、x/y、宽高和排序。布局用于表达相对位置，不作为建筑 CAD 数据。
 
-## activities 行程档案 v2
+## activities 行程档案（行程模块 v3 / Plan modelVersion 3）
 
-| 字段                                         | 类型            | 说明                                                       |
-| -------------------------------------------- | --------------- | ---------------------------------------------------------- |
-| id / modelVersion                            | string/2        | 系统主键与当前模型版本                                     |
-| title / type / status                        | string          | 名称、类型和 draft/planned/in_progress/completed/cancelled |
-| tripMode                                     | string          | `one_way` 或 `round_trip`                                  |
-| departureAt / returnAt                       | string          | 出发和结束/返程日期时间；单程不保存 returnAt               |
-| origin / destination / transportMode         | string          | 起点、终点和出行方式                                       |
-| containerRefs                                | object[]        | 移动容器引用、名称/图标快照、排序和迁移状态                |
-| packingItems                                 | object[]        | 本次行程携带条目，不改变物品真实位置                       |
-| packingItems[].id                            | string          | 本次行程稳定条目 ID，核对结果引用它                        |
-| packingItems[].itemId/containerId            | string          | 物品库与移动容器稳定引用                                   |
-| packingItems[].nameSnapshot/categorySnapshot | string          | 历史阅读快照                                               |
-| packingItems[].starred                       | boolean         | 是否重点关注；提醒时间读取全局偏好                         |
-| packingItems[].migrationPending              | boolean         | 旧数据缺少可靠物品或容器引用，等待用户整理                 |
-| notes / infoCards                            | string/object[] | 备注及独立通用信息卡片                                     |
-| createdAt / updatedAt                        | ISO string      | 创建和更新时间                                             |
+| 字段                                           | 类型            | 说明                                                       |
+| ---------------------------------------------- | --------------- | ---------------------------------------------------------- |
+| id / modelVersion                              | string/3        | 系统主键与当前内部模型版本                                 |
+| title / type / status                          | string          | 名称、类型和 draft/planned/in_progress/completed/cancelled |
+| journeyType                                    | string          | `one_way` 或 `round_trip`                                  |
+| startsAt / endsAt                              | ISO string      | 整个行动档案的完整开始和结束时间，单程也必须有 endsAt      |
+| endTimePending                                 | boolean         | 兼容迁移时标记仍需用户确认结束时间的数据                   |
+| legs                                           | object[]        | 去程和可选返程的路线分段                                   |
+| legs[].direction                               | string          | `outbound` 或 `return`                                     |
+| legs[].origin / destination                    | string          | 当前路线段起点和终点                                       |
+| legs[].stops                                   | string[]        | 按路线顺序保存的途经点                                     |
+| legs[].departureAt / arrivalAt / transportMode | string          | 当前路线段时间和出行方式                                   |
+| containerRefs                                  | object[]        | 移动容器引用、名称/图标快照、排序和迁移状态                |
+| containerRefs[].importedAll / importedAt       | boolean/string  | 是否整包导入及该次导入时间                                 |
+| containerRefs[].importedItemIds                | string[]        | 整包导入时递归带入的物品 ID 快照                           |
+| packingItems                                   | object[]        | 本次行程携带条目，不改变物品真实位置                       |
+| packingItems[].id                              | string          | 本次行程稳定条目 ID，核对结果引用它                        |
+| packingItems[].itemId / containerId            | string          | 物品库与移动容器稳定引用                                   |
+| packingItems[].nameSnapshot / categorySnapshot | string          | 历史阅读快照                                               |
+| packingItems[].starred                         | boolean         | 是否重点关注；提醒时间读取全局偏好                         |
+| packingItems[].migrationPending                | boolean         | 旧数据缺少可靠物品或容器引用，等待用户整理                 |
+| notes / infoCards                              | string/object[] | 备注及时间线、分页、清单、键值和金额等独立信息卡片         |
+| createdAt / updatedAt                          | ISO string      | 创建和更新时间                                             |
 
-`startDate`、`endDate`、`startTime`、`endTime`、`description`、`bagIds` 和条目中的旧名称字段仅在行程旧界面清理前保留兼容读取。旧无容器条目进入虚拟“待整理物品”分组，不因升级被删除。
+`tripMode`、`departureAt`、`returnAt`、`origin`、`destination` 和 `transportMode` 继续作为兼容别名；旧的 `startDate`、`endDate`、`startTime`、`endTime`、`description`、`bagIds` 及条目名称字段仅用于迁移或读取历史数据。旧无容器条目进入虚拟“待整理物品”分组，不因升级被删除。
 
 ## checkSessions 核对记录 v2
 
@@ -104,7 +111,7 @@
 
 ## 行程提醒偏好
 
-本地键为 `asset-tracker-trip-preferences`。出发和结束提醒均可设为关闭或“前一天晚上”，默认时间为 21:00。当前只保存并展示星标提醒规则，尚未接入系统推送。
+本地键为 `asset-tracker-trip-preferences`。出发和返程/结束提醒均可设为关闭或“前一天晚上”，默认时间为 21:00。当前只保存并展示星标提醒规则，尚未接入系统推送。
 
 ## 备份
 
@@ -114,4 +121,4 @@
 - v2 备份：没有 v3 空间表；
 - v3 备份：完整保存物品档案 v3、分区、空间树和布局。
 
-恢复旧备份后会自动补齐 v3 默认分区、空间节点和物品字段，并把行程与核对记录统一迁移到各自的 modelVersion 2。
+恢复旧备份后会自动补齐 v3 默认分区、空间节点和物品字段，并把行程迁移到 Plan modelVersion 3、核对记录迁移到 CheckSession modelVersion 2。

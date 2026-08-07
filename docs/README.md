@@ -1,6 +1,6 @@
 # 项目文档索引
 
-更新日期：2026-08-06
+更新日期：2026-08-07
 
 文档按开发阶段归档。编号表示阅读和开发顺序；跨阶段的工程参考集中放在 `90-engineering`。
 
@@ -33,15 +33,20 @@
 - [对话决策与原文参考](03-item-module-v3/references/item-module-v3-conversation-reference.md)：决策摘要及完整用户/Codex 对话原文。
 - [工程阶段对话续录](03-item-module-v3/references/item-module-v3-engineering-conversation-continuation.md)：Git 建仓、正式接入、界面修正、Mac 交接和转入行程模块的完整可见对话。
 
-## 04 — 行程模块 v2
+## 04 — 行程模块 v2 历史归档
 
-- [最终确认原型](04-trip-module-v2/prototypes/trip-module-v2-timeline.html)：行程模块 v2 原型第 11 版，工程接入界面基线。
+- [最终确认原型](04-trip-module-v2/prototypes/trip-module-v2-timeline.html)：行程模块 v2 原型第 11 版初始基线；正式工程中的 2026-08-07 校正以行动档案设计和迭代日志为准。
 - [行动档案设计](04-trip-module-v2/trip-module-v2-action-record-design.md)：通勤、外出、旅行和搬家共用的已确认产品基线。
 - [工程接入计划](04-trip-module-v2/trip-module-v2-implementation-plan.md)：数据模型、迁移、页面拆分、测试和实施顺序。
 - [设计草案与工程细节](04-trip-module-v2/trip-module-v2-design-draft.md)：设计演进和接入阶段继续验证的细节。
 - [设计迭代日志](04-trip-module-v2/trip-module-v2-iteration-log.md)：面向非编程人员记录每轮界面与功能变化。
-- [对话决策与完整原文](04-trip-module-v2/references/trip-module-v2-conversation-reference.md)：从第一版到第 11 版确认的用户/Codex 可见对话。
+- [对话决策与完整原文](04-trip-module-v2/references/trip-module-v2-conversation-reference.md)：从第一版到第 11 版确认及正式工程校正的用户/Codex 可见对话。
 - [第一版历史原型](04-trip-module-v2/prototypes/trip-module-v2.html)：用于追溯早期交互，不作为当前实现依据。
+
+## 05 — 行程模块 v3
+
+- [当前基线索引](05-trip-module-v3/README.md)：当前版本边界、正式设计与 v2 历史入口。
+- [设计总说明](05-trip-module-v3/trip-module-v3-design-spec.md)：主页、建档、携带清单、档案、核对和视觉规则。
 
 ## 90 — 工程参考
 
