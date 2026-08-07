@@ -11,6 +11,7 @@
 - 已归档早期标签：`baseline-2026-07-16`
 - 当前行程里程碑标签：`trip-v3-integration-baseline`
 - 当前功能里程碑：行程模块 v3，提交 `fbb573b`；下一阶段为单人 MVP 收口与发布准备。
+- 当前开发分支：`codex/mvp-closure`。
 - 产品与设计文档入口：`docs/README.md`
 - 项目技术栈：Vue 3、Vite、Pinia、IndexedDB、Capacitor 8、iOS Swift Package Manager。
 
@@ -75,7 +76,7 @@ npm ci
 npm run check
 ```
 
-如果里程碑功能分支尚未合并到 `main`，先执行 `git fetch origin`，再切换到远端明确指定的功能分支；不要在落后的 `main` 上重复实现。当前行程 v3 分支为 `codex/trip-module-v3`。
+行程 v3 已通过 PR #3 合并到 `main`。参与下一阶段开发时，先执行 `git fetch origin`，再切换到 `codex/mvp-closure`；只做稳定版本验收时留在 `main`。
 
 只有 `package-lock.json` 变化、首次安装或依赖异常时才必须重新执行 `npm ci`；为了降低双端差异，也可以在每次重要测试前执行。
 

@@ -36,7 +36,7 @@ Git 分支、提交和标签是代码快照，不替代以上任何版本号。
 | 当前核对记录     | `CheckSession.modelVersion: 2`                        |
 | IndexedDB        | v8                                                    |
 | 备份格式         | v3                                                    |
-| 当前 Git 分支    | `codex/trip-module-v3`                                |
+| 当前 Git 分支    | `codex/mvp-closure`                                   |
 | 当前设计基线     | `fbb573b feat: establish trip module v3 baseline`     |
 | 当前里程碑标签   | `trip-v3-integration-baseline`                        |
 

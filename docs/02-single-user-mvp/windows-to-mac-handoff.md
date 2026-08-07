@@ -22,7 +22,8 @@ git log --oneline --decorate -5
 - 默认分支：`main`；
 - 已归档早期基线：`baseline-2026-07-16`；
 - 当前行程里程碑标签：`trip-v3-integration-baseline`。
-- 当前行程 v3 里程碑：`fbb573b`；在功能分支尚未合并到 `main` 时，需要切换到 `codex/trip-module-v3`。
+- 当前行程 v3 里程碑：`fbb573b`；PR #3 已合并到 `main`。
+- 当前下一阶段开发分支：`codex/mvp-closure`；用于单人 MVP 收口与发布准备。
 
 ## Mac 准备
 
@@ -81,15 +82,15 @@ git log --oneline --decorate -5
 
 此时应看到 `main` 跟踪 `origin/main`，最新提交与 GitHub 一致。
 
-如果行程 v3 尚未合并到 `main`，在仓库完成远端推送后执行：
+当前 `main` 已包含行程模块 v3。若要直接参与下一阶段收口开发，在 `codex/mvp-closure` 推送后执行：
 
 ```bash
 git fetch origin
-git switch --track origin/codex/trip-module-v3
+git switch --track origin/codex/mvp-closure
 git log -1 --oneline
 ```
 
-最后一条应显示 `fbb573b feat: establish trip module v3 baseline` 或其后的收口文档提交。分支合并到 `main` 后，新电脑优先回到 `main` 开发。
+只做稳定版本测试时留在 `main`；需要修改下一阶段代码时才切换到 `codex/mvp-closure`，避免直接在 `main` 开发。
 
 安装 Mac 版本依赖并验证：
 

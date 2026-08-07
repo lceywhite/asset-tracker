@@ -2,7 +2,7 @@
 
 快照日期：2026-08-07
 当前 App 版本：`1.0.0-beta.1`
-当前分支：`codex/trip-module-v3`
+当前分支：`codex/mvp-closure`
 当前设计基线：`fbb573b feat: establish trip module v3 baseline`
 
 ## 一句话状态
