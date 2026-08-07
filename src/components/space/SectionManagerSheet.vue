@@ -72,9 +72,9 @@ async function removeSection(section) {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 flex items-end bg-black/35" @click.self="$emit('close')">
+  <div v-if="show" class="fixed inset-0 z-50 flex items-end justify-center bg-black/35" @click.self="$emit('close')">
     <section
-      class="flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-[#f6f5f1] pb-[max(20px,env(safe-area-inset-bottom))]"
+      class="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-t-3xl bg-[#f6f5f1] pb-[max(20px,env(safe-area-inset-bottom))]"
     >
       <header class="flex items-center border-b bg-white px-4 py-3">
         <button class="text-sm text-gray-500" @click="$emit('close')">关闭</button>

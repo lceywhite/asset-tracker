@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue"
+import { computed, nextTick, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import ItemEditSheet from "@/components/item/ItemEditSheet.vue"
 
@@ -7,6 +7,8 @@ const route = useRoute()
 const router = useRouter()
 const showCreate = ref(false)
 const showQuickMenu = ref(false)
+const quickMenuDialog = ref(null)
+let quickMenuTrigger = null
 const tabs = [
   { key: "items", path: "/items", label: "物品", icon: "◫" },
   { key: "plans", path: "/plans", label: "行程", icon: "▣" },
@@ -24,13 +26,42 @@ function onCreated(item) {
   showCreate.value = false
   router.push(`/item/${item.id}`)
 }
-function openItemCreate() {
+async function openQuickMenu(event) {
+  quickMenuTrigger = event.currentTarget
+  showQuickMenu.value = true
+  await nextTick()
+  quickMenuDialog.value?.focus()
+}
+function closeQuickMenu({ restoreFocus = true } = {}) {
   showQuickMenu.value = false
+  if (restoreFocus) nextTick(() => quickMenuTrigger?.isConnected && quickMenuTrigger.focus())
+}
+function openItemCreate() {
+  closeQuickMenu({ restoreFocus: false })
   showCreate.value = true
 }
 function openTripCreate() {
-  showQuickMenu.value = false
+  closeQuickMenu({ restoreFocus: false })
   router.push("/plans/new")
+}
+function handleQuickMenuKeydown(event) {
+  if (event.key === "Escape") {
+    event.preventDefault()
+    closeQuickMenu()
+    return
+  }
+  if (event.key !== "Tab") return
+  const focusable = [...quickMenuDialog.value.querySelectorAll("button:not([disabled]), [href], input:not([disabled])")]
+  if (!focusable.length) return
+  const [first] = focusable
+  const last = focusable.at(-1)
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === quickMenuDialog.value)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 </script>
 
@@ -61,7 +92,7 @@ function openTripCreate() {
       <button
         aria-label="快捷添加"
         class="relative min-h-[58px] flex flex-col items-center justify-end pb-1.5 text-blue-600"
-        @click="showQuickMenu = true"
+        @click="openQuickMenu"
       >
         <span
           class="absolute -top-5 w-14 h-14 rounded-2xl text-white text-3xl flex items-center justify-center active:scale-95 transition-transform"
@@ -88,10 +119,20 @@ function openTripCreate() {
     </nav>
 
     <ItemEditSheet :show="showCreate" @close="showCreate = false" @created="onCreated" />
-    <div v-if="showQuickMenu" class="fixed inset-0 z-40 flex items-end bg-black/30" @click.self="showQuickMenu = false">
-      <section class="w-full bg-white rounded-t-3xl px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+    <div
+      v-if="showQuickMenu"
+      ref="quickMenuDialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-menu-title"
+      tabindex="-1"
+      class="fixed inset-0 z-40 flex items-end justify-center bg-black/30 outline-none"
+      @click.self="closeQuickMenu()"
+      @keydown="handleQuickMenuKeydown"
+    >
+      <section class="w-full max-w-2xl bg-white rounded-t-3xl px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
         <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5"></div>
-        <h2 class="text-lg font-bold">快捷添加</h2>
+        <h2 id="quick-menu-title" class="text-lg font-bold">快捷添加</h2>
         <p class="text-xs text-gray-400 mt-1 mb-4">选择这次要记录的内容</p>
         <div class="grid grid-cols-2 gap-3">
           <button class="rounded-2xl border p-4 text-left bg-blue-50/50" @click="openItemCreate">
@@ -103,7 +144,7 @@ function openTripCreate() {
             ><small class="block text-[11px] text-gray-400 mt-1">选择物品并开始核对</small>
           </button>
         </div>
-        <button class="w-full py-3 mt-2 text-sm text-gray-400" @click="showQuickMenu = false">取消</button>
+        <button class="w-full py-3 mt-2 text-sm text-gray-400" @click="closeQuickMenu()">取消</button>
       </section>
     </div>
   </div>
@@ -112,5 +153,13 @@ function openTripCreate() {
 <style scoped>
 .nav-tab {
   @apply min-h-[58px] flex flex-col items-center justify-center gap-0.5 active:bg-gray-50;
+}
+@media (min-width: 1024px) {
+  .app-shell {
+    max-width: 1180px;
+    margin-inline: auto;
+    border-inline: 1px solid var(--color-border-light);
+    box-shadow: 0 0 28px rgb(15 23 42 / 4%);
+  }
 }
 </style>

@@ -334,8 +334,12 @@ async function clearData() {
       {{ message }}
     </div>
 
-    <div v-if="editOpen" class="fixed inset-0 z-50 flex items-end bg-black/30" @click.self="editOpen = false">
-      <div class="w-full bg-white rounded-t-3xl px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+    <div
+      v-if="editOpen"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
+      @click.self="editOpen = false"
+    >
+      <div class="w-full max-w-2xl bg-white rounded-t-3xl px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
         <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5"></div>
         <h3 class="font-bold text-lg mb-4">编辑个人资料</h3>
         <div class="flex gap-2 overflow-x-auto pb-3">
@@ -361,8 +365,12 @@ async function clearData() {
       </div>
     </div>
 
-    <div v-if="importPreview" class="fixed inset-0 z-50 flex items-end bg-black/30" @click.self="importPreview = null">
-      <div class="w-full bg-white rounded-t-3xl p-5 pb-[max(24px,env(safe-area-inset-bottom))]">
+    <div
+      v-if="importPreview"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
+      @click.self="importPreview = null"
+    >
+      <div class="w-full max-w-2xl bg-white rounded-t-3xl p-5 pb-[max(24px,env(safe-area-inset-bottom))]">
         <h3 class="font-bold text-lg">备份预检通过</h3>
         <p class="text-sm text-gray-500 mt-2">
           包含 {{ importPreview.items }} 件物品、{{ importPreview.activities }} 个行程、{{

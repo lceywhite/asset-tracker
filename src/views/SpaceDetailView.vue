@@ -357,9 +357,13 @@ function openNewItem() {
       @created="onItemCreated"
     />
 
-    <div v-if="showAddChoice" class="fixed inset-0 z-50 flex items-end bg-black/35" @click.self="showAddChoice = false">
+    <div
+      v-if="showAddChoice"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/35"
+      @click.self="showAddChoice = false"
+    >
       <section
-        class="flex max-h-[82dvh] w-full flex-col rounded-t-3xl bg-white pb-[max(20px,env(safe-area-inset-bottom))]"
+        class="flex max-h-[82dvh] w-full max-w-2xl flex-col rounded-t-3xl bg-white pb-[max(20px,env(safe-area-inset-bottom))]"
       >
         <div class="mx-auto my-3 h-1 w-10 rounded-full bg-gray-200"></div>
         <div class="flex items-center justify-between px-4 pb-3">

@@ -413,17 +413,53 @@ try {
   })
   await page.getByText(/数据表 items 缺失或格式错误/).waitFor()
 
-  const overflow = await page.evaluate(
+  const mobileOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   )
-  assert.equal(overflow, false)
+  assert.equal(mobileOverflow, false)
   await page.screenshot({ path: resolve(outputDirectory, "my-page-iphone.png"), fullPage: true })
+
+  const quickAddButton = page.getByRole("button", { name: "快捷添加", exact: true })
+  await quickAddButton.focus()
+  await quickAddButton.press("Enter")
+  const quickDialog = page.getByRole("dialog", { name: "快捷添加", exact: true })
+  await quickDialog.waitFor()
+  assert.equal(await quickDialog.evaluate((element) => element.contains(document.activeElement)), true)
+  await quickDialog.press("Escape")
+  await quickDialog.waitFor({ state: "hidden" })
+  assert.equal(await quickAddButton.evaluate((element) => element === document.activeElement), true)
+
+  await page.setViewportSize({ width: 1366, height: 900 })
+  const desktopRoutes = [
+    ["/items", "desktop-items.png", "MVP 测试护照"],
+    ["/spaces/bag-fixture", "desktop-space.png", "测试背包"],
+    [`/item/${restored.itemId}`, "desktop-item-profile.png", "MVP 测试护照"],
+    ["/plans", "desktop-plans.png", "MVP 测试行程"],
+    [`/plans/${restored.planId}`, "desktop-trip-profile.png", "行程安排"],
+    ["/community", "desktop-community.png", "社区入口已预留"],
+    ["/me", "desktop-me.png", "单人本地账户 · 点此编辑资料"],
+    ["/me/updates", "desktop-release-notes.png", "照片更轻，备份可以完整恢复"],
+  ]
+  for (const [path, screenshotName, readyText] of desktopRoutes) {
+    await page.goto(`${appUrl.replace(/\/$/, "")}#${path}`, { waitUntil: "networkidle" })
+    await page.getByText(readyText, { exact: true }).first().waitFor()
+    const routeState = await page.evaluate(() => ({
+      hasContent: document.body.innerText.trim().length > 10,
+      hasOverlay: Boolean(document.querySelector("vite-error-overlay, .vite-error-overlay")),
+      overflows: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    }))
+    assert.equal(routeState.hasContent, true, `${path} should render meaningful content`)
+    assert.equal(routeState.hasOverlay, false, `${path} should not show a Vite error overlay`)
+    assert.equal(routeState.overflows, false, `${path} should not overflow horizontally on desktop`)
+    await page.screenshot({ path: resolve(outputDirectory, screenshotName), fullPage: true })
+  }
+
   assert.deepEqual(
     runtimeErrors.filter((message) => !message.includes("net::ERR_FAILED")),
     [],
   )
   console.log(
-    "Single-user MVP smoke passed: DB v4→v8, image compression, item v3, trip v3/model v3, four tabs, backup v3 destructive restore",
+    "Single-user MVP smoke passed: DB v4→v8, image compression, item v3, trip v3/model v3, four tabs, keyboard quick add, mobile/desktop routes, backup v3 destructive restore",
   )
 } finally {
   await browser.close()

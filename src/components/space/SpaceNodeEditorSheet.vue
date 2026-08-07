@@ -112,9 +112,9 @@ async function remove() {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 z-[60] flex items-end bg-black/35" @click.self="$emit('close')">
+  <div v-if="show" class="fixed inset-0 z-[60] flex items-end justify-center bg-black/35" @click.self="$emit('close')">
     <section
-      class="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(24px,env(safe-area-inset-bottom))]"
+      class="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(24px,env(safe-area-inset-bottom))]"
     >
       <div class="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200"></div>
       <div class="flex items-center justify-between">

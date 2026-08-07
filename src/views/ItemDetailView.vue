@@ -261,8 +261,12 @@ async function onEdited() {
     </main>
     <div v-else class="flex flex-1 items-center justify-center text-sm text-gray-400">物品不存在</div>
 
-    <div v-if="showMove" class="fixed inset-0 z-50 flex items-end bg-black/35" @click.self="showMove = false">
-      <section class="w-full rounded-t-3xl bg-white p-5 pb-[max(24px,env(safe-area-inset-bottom))]">
+    <div
+      v-if="showMove"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/35"
+      @click.self="showMove = false"
+    >
+      <section class="w-full max-w-2xl rounded-t-3xl bg-white p-5 pb-[max(24px,env(safe-area-inset-bottom))]">
         <div class="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200"></div>
         <h2 class="text-lg font-bold">移动物品</h2>
         <label class="mt-4 block text-xs text-gray-500"
