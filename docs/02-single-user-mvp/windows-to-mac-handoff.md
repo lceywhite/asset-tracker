@@ -13,7 +13,7 @@ git status -sb
 git log --oneline --decorate -5
 ```
 
-理想状态应显示 `main...origin/main`，没有 `ahead`、`M` 或 `??`。如果有修改，先检查、提交并执行 `git push`。
+只测试稳定主线时，理想状态应显示 `main...origin/main`；测试当前 MVP 候选版本时，应显示 `codex/mvp-closure...origin/codex/mvp-closure`。两种情况都不应有 `ahead`、`M` 或 `??`。如果有修改，先检查、提交并执行 `git push`。
 
 当前仓库信息：
 
@@ -23,7 +23,8 @@ git log --oneline --decorate -5
 - 已归档早期基线：`baseline-2026-07-16`；
 - 当前行程里程碑标签：`trip-v3-integration-baseline`。
 - 当前行程 v3 里程碑：`fbb573b`；PR #3 已合并到 `main`。
-- 当前下一阶段开发分支：`codex/mvp-closure`；用于单人 MVP 收口与发布准备。
+- 当前 MVP 候选分支：`codex/mvp-closure`；M1–M3 已完成，核心验收提交为 `3a0def6`，远端 CI 已通过。
+- 下一阶段：M4 Mac/Xcode/iPhone 集中验收；真机通过前暂不把候选分支自动合并到 `main`。
 
 ## Mac 准备
 
@@ -82,7 +83,7 @@ git log --oneline --decorate -5
 
 此时应看到 `main` 跟踪 `origin/main`，最新提交与 GitHub 一致。
 
-当前 `main` 已包含行程模块 v3。若要直接参与下一阶段收口开发，在 `codex/mvp-closure` 推送后执行：
+当前 `main` 已包含行程模块 v3，但还不包含 M1–M3 的全部收口改动。要开始 M4 真机验收，请执行：
 
 ```bash
 git fetch origin
@@ -90,7 +91,7 @@ git switch --track origin/codex/mvp-closure
 git log -1 --oneline
 ```
 
-只做稳定版本测试时留在 `main`；需要修改下一阶段代码时才切换到 `codex/mvp-closure`，避免直接在 `main` 开发。
+提交历史中应包含 `3a0def6 test: complete Windows MVP acceptance`。只回看行程 v3 稳定基线时才留在 `main`；当前 Mac/Xcode/iPhone 测试和由此产生的修复都在 `codex/mvp-closure` 继续，避免直接在 `main` 开发。
 
 安装 Mac 版本依赖并验证：
 
@@ -98,6 +99,8 @@ git log -1 --oneline
 npm ci
 npm run check
 ```
+
+需要在 Mac 复跑完整浏览器验收时，先在一个终端执行 `npm run dev`，再在另一个终端执行 `npm run smoke`；如果 Vite 没有使用默认 5173 端口，应按终端地址设置 `APP_URL`。
 
 `node_modules` 不能从 Windows 复制，因为其中可能包含与操作系统和 CPU 架构有关的内容。`npm ci` 会严格按照 `package-lock.json` 重建依赖。
 
@@ -119,6 +122,8 @@ npm run ios:open
 - `ios:sync` 会构建网页资源并同步到 Capacitor iOS 工程；
 - `ios:open` 会在 Xcode 打开 `ios/App`；
 - 不要直接编辑 `ios/App/App/public`，下次同步会覆盖它。
+
+从这一节开始即正式进入 M4：前面的 M1–M3 已在 Windows/Web 完成，Mac 的首要任务不再是重新设计功能，而是验证 Xcode 构建、签名、真机安装、相机照片、分享、触觉、冷启动、离线和备份恢复。
 
 ## Xcode 签名与 iPhone 安装
 

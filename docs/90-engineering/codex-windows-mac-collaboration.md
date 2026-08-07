@@ -10,8 +10,8 @@
 - 稳定主分支：`main`
 - 已归档早期标签：`baseline-2026-07-16`
 - 当前行程里程碑标签：`trip-v3-integration-baseline`
-- 当前功能里程碑：行程模块 v3，提交 `fbb573b`；下一阶段为单人 MVP 收口与发布准备。
-- 当前开发分支：`codex/mvp-closure`。
+- 当前功能里程碑：单人 MVP 收口 M1–M3 完成，核心验收提交 `3a0def6`；远端 CI 已通过。
+- 当前候选分支：`codex/mvp-closure`；下一阶段为 M4 Mac/Xcode/iPhone 集中验收，真机通过前不自动合并到 `main`。
 - 产品与设计文档入口：`docs/README.md`
 - 项目技术栈：Vue 3、Vite、Pinia、IndexedDB、Capacitor 8、iOS Swift Package Manager。
 
@@ -76,7 +76,7 @@ npm ci
 npm run check
 ```
 
-行程 v3 已通过 PR #3 合并到 `main`。参与下一阶段开发时，先执行 `git fetch origin`，再切换到 `codex/mvp-closure`；只做稳定版本验收时留在 `main`。
+行程 v3 已通过 PR #3 合并到 `main`。M1–M3 候选版本位于 `codex/mvp-closure`；Mac 开始 M4 前先执行 `git fetch origin`，再切换并确认提交历史包含 `3a0def6`。只回看未收口的行程 v3 基线时才留在 `main`。
 
 只有 `package-lock.json` 变化、首次安装或依赖异常时才必须重新执行 `npm ci`；为了降低双端差异，也可以在每次重要测试前执行。
 
