@@ -15,8 +15,8 @@
 
 - 复杂界面延续物品模块 v3 的克制移动端语言：信息层级清晰、核心动作少、填写路径短；先保证单人离线使用，再考虑高级功能。
 - 当前有效设计与工程状态以 `docs/00-planning/current-development-status.md` 为准。
-- 版本名称以 `docs/00-planning/version-management.md` 为准：物品模块 v3 已接入；行程模块 v2 原型第 11 版已确认，正式代码待接入。
-- “行程模块 v2 原型第 11 版”不能缩写为“行程 v11”。
+- 版本名称以 `docs/00-planning/version-management.md` 为准：物品模块 v3、行程模块 v3 均已接入；行程 v2 原型第 11 版仅作为历史设计来源。
+- “行程模块 v2 原型第 11 版”不能缩写为“行程 v11”；`Plan.modelVersion 3` 也不能代替产品模块版本。
 
 ## 3. 数据与验收特例
 

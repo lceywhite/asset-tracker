@@ -48,6 +48,10 @@
 - [当前基线索引](05-trip-module-v3/README.md)：当前版本边界、正式设计与 v2 历史入口。
 - [设计总说明](05-trip-module-v3/trip-module-v3-design-spec.md)：主页、建档、携带清单、档案、核对和视觉规则。
 
+## 06 — 单人 MVP 收口与发布准备
+
+- [项目进度审查与下一阶段计划](06-mvp-closure/project-progress-audit-and-plan.md)：全项目完成度、风险分级、发布前任务和 Mac/iPhone 进入条件。
+
 ## 90 — 工程参考
 
 - [数据字典](90-engineering/data-dictionary.md)：单人 MVP 的数据实体、字段和关系。

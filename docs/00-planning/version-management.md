@@ -37,7 +37,8 @@ Git 分支、提交和标签是代码快照，不替代以上任何版本号。
 | IndexedDB        | v8                                                    |
 | 备份格式         | v3                                                    |
 | 当前 Git 分支    | `codex/trip-module-v3`                                |
-| 当前设计基线     | 2026-08-07 行程模块 v3 阶段提交                       |
+| 当前设计基线     | `fbb573b feat: establish trip module v3 baseline`     |
+| 当前里程碑标签   | `trip-v3-integration-baseline`                        |
 
 行程模块的产品代次现为 v3。正式行程记录仍使用 `Plan.modelVersion: 3` 保存 `startsAt`、`endsAt`、去程/返程 `legs`、途经点和信息卡片；核对记录继续使用 `CheckSession.modelVersion: 2`。IndexedDB 保持 v8，备份保持 v3。本次产品基线确认没有新增数据字段、表或迁移事务。
 

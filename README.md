@@ -49,6 +49,7 @@ Windows PowerShell 若限制执行 `npm.ps1`，可将 `npm` 改为 `npm.cmd`。
 - [单人 MVP Beta 1 记录](docs/02-single-user-mvp/release-1-beta-1.md)
 - [物品模块 v3 设计总说明](docs/03-item-module-v3/item-module-v3-design-spec.md)
 - [行程模块 v3 当前设计与工程基线](docs/05-trip-module-v3/README.md)
+- [单人 MVP 项目审查与下一阶段计划](docs/06-mvp-closure/project-progress-audit-and-plan.md)
 - [行程模块 v2 原型与工程历史归档](docs/04-trip-module-v2/README.md)
 
 ## 当前边界

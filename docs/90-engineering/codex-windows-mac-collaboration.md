@@ -1,6 +1,6 @@
 # Codex Windows / Mac 双端开发协同规范
 
-更新日期：2026-07-16
+更新日期：2026-08-07
 
 本文供 Windows 与 Mac 上的 Codex 在接手项目时共同遵循。目标是让两个环境围绕同一个 GitHub 仓库协作，避免覆盖代码、重复实现或误提交本机配置。
 
@@ -8,7 +8,9 @@
 
 - GitHub 私有仓库：`https://github.com/lceywhite/asset-tracker`
 - 稳定主分支：`main`
-- 当前基线标签：`baseline-2026-07-16`
+- 已归档早期标签：`baseline-2026-07-16`
+- 当前行程里程碑标签：`trip-v3-integration-baseline`
+- 当前功能里程碑：行程模块 v3，提交 `fbb573b`；下一阶段为单人 MVP 收口与发布准备。
 - 产品与设计文档入口：`docs/README.md`
 - 项目技术栈：Vue 3、Vite、Pinia、IndexedDB、Capacitor 8、iOS Swift Package Manager。
 
@@ -47,6 +49,7 @@ git remote -v
 3. `docs/00-planning/product-development-plan-v2.md`；
 4. 当前模块的设计说明、迭代日志和已确认原型；
 5. 本文以及 `docs/90-engineering/git-guide-for-owner.md`。
+6. `docs/06-mvp-closure/project-progress-audit-and-plan.md`。
 
 如果工作区不干净，Codex 必须先说明已有改动属于什么范围，不得直接覆盖、重置或删除。设计阶段与工程实现阶段仍按用户约定执行：涉及界面方案时先确认设计；开始对应工程代码前按用户要求确认。
 
@@ -71,6 +74,8 @@ git pull --ff-only
 npm ci
 npm run check
 ```
+
+如果里程碑功能分支尚未合并到 `main`，先执行 `git fetch origin`，再切换到远端明确指定的功能分支；不要在落后的 `main` 上重复实现。当前行程 v3 分支为 `codex/trip-module-v3`。
 
 只有 `package-lock.json` 变化、首次安装或依赖异常时才必须重新执行 `npm ci`；为了降低双端差异，也可以在每次重要测试前执行。
 
