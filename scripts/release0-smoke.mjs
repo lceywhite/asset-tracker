@@ -143,6 +143,30 @@ try {
   assert.ok(currencyBox.x + currencyBox.width < priceBox.x)
   await page.getByLabel("购入价金额").scrollIntoViewIfNeeded()
   await page.screenshot({ path: resolve(outputDirectory, "item-add-v3-iphone.png"), fullPage: true })
+  const photoDataUrl = await page.evaluate(() => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 2400
+    canvas.height = 1800
+    const context = canvas.getContext("2d")
+    const image = context.createImageData(canvas.width, canvas.height)
+    for (let index = 0; index < image.data.length; index += 4) {
+      const pixel = index / 4
+      image.data[index] = (pixel * 13) % 255
+      image.data[index + 1] = (pixel * 29) % 255
+      image.data[index + 2] = (pixel * 47) % 255
+      image.data[index + 3] = 255
+    }
+    context.putImageData(image, 0, 0)
+    return canvas.toDataURL("image/jpeg", 0.96)
+  })
+  const photoBuffer = Buffer.from(photoDataUrl.split(",")[1], "base64")
+  assert.ok(photoBuffer.length > 1024 * 1024)
+  await page.locator('input[type="file"][accept="image/*"][multiple]').setInputFiles({
+    name: "phone-photo.jpg",
+    mimeType: "image/jpeg",
+    buffer: photoBuffer,
+  })
+  await page.getByText(/已加入 1 张/).waitFor()
   await page.getByPlaceholder("例如：通勤背包").fill("MVP 测试护照")
   await page.getByRole("button", { name: "证件", exact: true }).click()
   await page.getByLabel("当前空间 / 容器").selectOption("bag-fixture")
@@ -152,6 +176,28 @@ try {
   await page.reload({ waitUntil: "networkidle" })
   await page.getByText("MVP 测试护照", { exact: true }).waitFor()
   await page.getByText(/ID · AT-/).waitFor()
+  const storedImage = await page.evaluate(async () => {
+    const request = indexedDB.open("asset-tracker-db")
+    const database = await new Promise((resolveOpen) => (request.onsuccess = () => resolveOpen(request.result)))
+    const items = await new Promise((resolveRead) => {
+      const get = database.transaction("items").objectStore("items").getAll()
+      get.onsuccess = () => resolveRead(get.result)
+    })
+    database.close()
+    const dataUrl = items.find((item) => item.name === "MVP 测试护照").images[0].url
+    const image = new Image()
+    image.src = dataUrl
+    await image.decode()
+    const body = dataUrl.split(",")[1]
+    const padding = body.endsWith("==") ? 2 : body.endsWith("=") ? 1 : 0
+    return {
+      bytes: Math.floor((body.length * 3) / 4) - padding,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    }
+  })
+  assert.ok(storedImage.bytes <= 1024 * 1024)
+  assert.ok(Math.max(storedImage.width, storedImage.height) <= 1600)
   await page.screenshot({ path: resolve(outputDirectory, "item-profile-v3-iphone.png"), fullPage: true })
 
   await page.getByRole("button", { name: "编辑", exact: true }).click()
@@ -181,7 +227,10 @@ try {
   await page.getByRole("button", { name: /新建行程/ }).click()
   await page.getByRole("textbox", { name: "行程名称", exact: true }).fill("MVP 测试行程")
   const tripStartInput = page.getByRole("textbox", { name: "开始时间", exact: true })
-  const tripStartValue = await tripStartInput.inputValue()
+  const tripStartDate = new Date()
+  tripStartDate.setDate(tripStartDate.getDate() + 1)
+  const tripStartValue = `${tripStartDate.getFullYear()}-${String(tripStartDate.getMonth() + 1).padStart(2, "0")}-${String(tripStartDate.getDate()).padStart(2, "0")}T08:00`
+  await tripStartInput.fill(tripStartValue)
   const tripEndDate = new Date(`${tripStartValue.slice(0, 10)}T00:00:00Z`)
   tripEndDate.setUTCDate(tripEndDate.getUTCDate() + 1)
   await page
@@ -193,7 +242,7 @@ try {
   await page.getByRole("textbox", { name: "信息内容", exact: true }).fill("09:00 | 到达 | 开始核对")
   await page.getByRole("button", { name: "保存卡片", exact: true }).click()
   await page.getByRole("button", { name: "＋ 添加物品", exact: true }).click()
-  await page.getByRole("heading", { name: "携带物品清单", exact: true }).waitFor()
+  await page.getByRole("heading", { name: "携带物品清单", exact: true, level: 1 }).waitFor()
   await page.getByRole("button", { name: /添加移动容器/ }).click()
   await page.getByRole("button", { name: /测试背包/ }).click()
   await page.getByRole("button", { name: "加入容器及全部物品", exact: true }).click()
@@ -273,6 +322,97 @@ try {
   assert.ok(backup.manifest.counts.checkSessions >= 1)
   assert.equal(backup.manifest.counts.homeSections, 3)
 
+  let clearConfirmations = 0
+  const confirmClear = async (dialog) => {
+    clearConfirmations += 1
+    await dialog.accept()
+  }
+  page.on("dialog", confirmClear)
+  await page.getByText("清空本机数据", { exact: true }).click()
+  await page.getByText("本机业务数据已清空", { exact: true }).waitFor()
+  page.off("dialog", confirmClear)
+  assert.equal(clearConfirmations, 2)
+  const clearedCounts = await page.evaluate(async () => {
+    const request = indexedDB.open("asset-tracker-db")
+    const database = await new Promise((resolveOpen) => (request.onsuccess = () => resolveOpen(request.result)))
+    const transaction = database.transaction(["items", "activities", "checkSessions", "spaceNodes"])
+    const count = (store) =>
+      new Promise((resolveCount) => {
+        const result = transaction.objectStore(store).count()
+        result.onsuccess = () => resolveCount(result.result)
+      })
+    const values = await Promise.all([count("items"), count("activities"), count("checkSessions"), count("spaceNodes")])
+    database.close()
+    return values
+  })
+  assert.deepEqual(clearedCounts, [0, 0, 0, 0])
+
+  const backupInput = page.locator('input[type="file"][accept*="application/json"]')
+  await backupInput.setInputFiles(backupPath)
+  await page.getByRole("heading", { name: "备份预检通过", exact: true }).waitFor()
+  await page.getByRole("button", { name: "替换现有数据", exact: true }).click()
+  await page.waitForFunction(
+    () => document.body.innerText.includes("数据已从备份替换") || document.body.innerText.includes("恢复失败："),
+  )
+  const restoreStatus = await page.locator("body").innerText()
+  if (restoreStatus.includes("恢复失败：")) {
+    await page.screenshot({ path: resolve(outputDirectory, "backup-restore-failure.png"), fullPage: true })
+  }
+  assert.match(restoreStatus, /数据已从备份替换/)
+  const restored = await page.evaluate(async () => {
+    const request = indexedDB.open("asset-tracker-db")
+    const database = await new Promise((resolveOpen) => (request.onsuccess = () => resolveOpen(request.result)))
+    const transaction = database.transaction(["items", "activities", "checkSessions", "spaceNodes"])
+    const readAll = (store) =>
+      new Promise((resolveRead) => {
+        const get = transaction.objectStore(store).getAll()
+        get.onsuccess = () => resolveRead(get.result)
+      })
+    const [items, plans, sessions, nodes] = await Promise.all([
+      readAll("items"),
+      readAll("activities"),
+      readAll("checkSessions"),
+      readAll("spaceNodes"),
+    ])
+    database.close()
+    const item = items.find((entry) => entry.name === "MVP 测试护照")
+    const plan = plans.find((entry) => entry.title === "MVP 测试行程")
+    return {
+      counts: [items.length, plans.length, sessions.length, nodes.length],
+      itemLocation: item.locationNodeId,
+      planItemId: plan.packingItems[0].itemId,
+      planContainerId: plan.packingItems[0].containerId,
+      sessionPlanId: sessions.find((entry) => entry.planId === plan.id)?.planId,
+      planId: plan.id,
+      itemId: item.id,
+    }
+  })
+  assert.deepEqual(restored.counts, [
+    backup.manifest.counts.items,
+    backup.manifest.counts.activities,
+    backup.manifest.counts.checkSessions,
+    backup.manifest.counts.spaceNodes,
+  ])
+  assert.equal(restored.itemLocation, "bag-fixture")
+  assert.equal(restored.planItemId, restored.itemId)
+  assert.equal(restored.planContainerId, "bag-fixture")
+  assert.equal(restored.sessionPlanId, restored.planId)
+
+  await backupInput.setInputFiles({
+    name: "damaged.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{ damaged"),
+  })
+  await page.getByText("JSON格式错误", { exact: true }).waitFor()
+  const missingStoreBackup = structuredClone(backup)
+  delete missingStoreBackup.data.stores.items
+  await backupInput.setInputFiles({
+    name: "missing-store.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(missingStoreBackup)),
+  })
+  await page.getByText(/数据表 items 缺失或格式错误/).waitFor()
+
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   )
@@ -282,7 +422,9 @@ try {
     runtimeErrors.filter((message) => !message.includes("net::ERR_FAILED")),
     [],
   )
-  console.log("Single-user MVP smoke passed: DB v4→v8, item v3, trip v3/model v3, four tabs, backup v3")
+  console.log(
+    "Single-user MVP smoke passed: DB v4→v8, image compression, item v3, trip v3/model v3, four tabs, backup v3 destructive restore",
+  )
 } finally {
   await browser.close()
 }

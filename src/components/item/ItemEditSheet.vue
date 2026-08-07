@@ -5,6 +5,13 @@ import * as categoryService from "@/services/categoryService"
 import * as nodeService from "@/services/spaceNodeService"
 import { getPreferences } from "@/services/itemPreferencesService"
 import { normalizePropertyGroups } from "@/domain/itemModel"
+import {
+  estimateDataUrlBytes,
+  formatImageBytes,
+  IMAGE_MAX_COUNT,
+  optimizeImageFile,
+  storageWriteErrorMessage,
+} from "@/utils/imageProcessing"
 
 const props = defineProps({
   show: Boolean,
@@ -24,10 +31,15 @@ const mode = ref("quick")
 const saving = ref(false)
 const errorMessage = ref("")
 const photoInput = ref(null)
+const processingImages = ref(false)
+const imageMessage = ref("")
 
 const isEdit = computed(() => Boolean(props.item))
 const title = computed(() => (isEdit.value ? "完整档案编辑" : mode.value === "quick" ? "快速添加物品" : "逐步添加物品"))
 const stepLabels = ["基本", "位置", "属性", "确认"]
+const imageUsageLabel = computed(() =>
+  formatImageBytes((form.images || []).reduce((sum, image) => sum + estimateDataUrlBytes(image.url), 0)),
+)
 const completeness = computed(() => {
   const checks = [
     form.name,
@@ -73,6 +85,8 @@ function resetForm() {
   step.value = 0
   tagInput.value = ""
   errorMessage.value = ""
+  imageMessage.value = ""
+  processingImages.value = false
   saving.value = false
 }
 
@@ -157,16 +171,43 @@ function removeGroup(groupId) {
 
 async function handleFiles(event) {
   const files = [...(event.target.files || [])]
-  for (const file of files) {
-    const url = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-    form.images.push({ id: crypto.randomUUID(), url, caption: "", isCover: form.images.length === 0 })
+  const available = Math.max(0, IMAGE_MAX_COUNT - form.images.length)
+  if (!available) {
+    errorMessage.value = `一个物品最多保存 ${IMAGE_MAX_COUNT} 张图片`
+    event.target.value = ""
+    return
   }
-  event.target.value = ""
+  processingImages.value = true
+  errorMessage.value = ""
+  imageMessage.value = "正在优化图片…"
+  let added = 0
+  let originalBytes = 0
+  let outputBytes = 0
+  try {
+    for (const file of files.slice(0, available)) {
+      try {
+        const result = await optimizeImageFile(file)
+        form.images.push({
+          id: crypto.randomUUID(),
+          url: result.dataUrl,
+          caption: "",
+          isCover: form.images.length === 0,
+        })
+        added += 1
+        originalBytes += result.originalBytes
+        outputBytes += result.outputBytes
+      } catch (error) {
+        errorMessage.value = `${file.name || "所选图片"}：${error.message || "处理失败"}`
+      }
+    }
+    if (files.length > available) errorMessage.value = `已达到每件物品最多 ${IMAGE_MAX_COUNT} 张图片的限制`
+    if (added)
+      imageMessage.value = `已加入 ${added} 张 · ${formatImageBytes(originalBytes)} → ${formatImageBytes(outputBytes)}`
+    else imageMessage.value = ""
+  } finally {
+    processingImages.value = false
+    event.target.value = ""
+  }
 }
 
 function makeCover(id) {
@@ -200,6 +241,10 @@ function toggleAddMode() {
 }
 
 async function submit() {
+  if (processingImages.value) {
+    errorMessage.value = "请等待图片处理完成"
+    return
+  }
   if (!form.name.trim()) {
     errorMessage.value = "请填写物品名称"
     return
@@ -231,7 +276,7 @@ async function submit() {
     const saved = isEdit.value ? await itemStore.editItem(props.item.id, data) : await itemStore.addItem(data)
     emit("created", saved)
   } catch (error) {
-    errorMessage.value = error.message || "保存失败"
+    errorMessage.value = storageWriteErrorMessage(error)
   } finally {
     saving.value = false
   }
@@ -290,7 +335,7 @@ async function submit() {
                 ><span>物品 ID · 自动生成且不可修改</span><input :value="form.itemCode" disabled
               /></label>
             </div>
-            <button class="v3-cover" type="button" @click="photoInput?.click()">
+            <button class="v3-cover" type="button" :disabled="processingImages" @click="photoInput?.click()">
               <img
                 v-if="form.images?.length"
                 :src="form.images.find((image) => image.isCover)?.url || form.images[0].url"
@@ -299,6 +344,10 @@ async function submit() {
             </button>
           </div>
           <input ref="photoInput" class="hidden" type="file" accept="image/*" multiple @change="handleFiles" />
+          <p class="mt-2 text-[11px] text-gray-400">
+            {{ processingImages ? "正在优化图片…" : `最多 ${IMAGE_MAX_COUNT} 张，自动压缩后约占 ${imageUsageLabel}` }}
+          </p>
+          <p v-if="imageMessage && !processingImages" class="mt-1 text-[11px] text-blue-600">{{ imageMessage }}</p>
           <div v-if="form.images?.length" class="mt-3 flex gap-2 overflow-x-auto">
             <div v-for="image in form.images" :key="image.id" class="relative shrink-0">
               <button

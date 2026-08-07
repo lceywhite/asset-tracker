@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, watch } from "vue"
 import * as nodeService from "@/services/spaceNodeService"
+import { formatImageBytes, optimizeImageFile, storageWriteErrorMessage } from "@/utils/imageProcessing"
 
 const props = defineProps({
   show: Boolean,
@@ -14,6 +15,8 @@ const form = reactive({})
 const saving = ref(false)
 const errorMessage = ref("")
 const imageInput = ref(null)
+const processingImage = ref(false)
+const imageMessage = ref("")
 const icons = ["🏠", "🏡", "🚙", "🚪", "🛏️", "📚", "🛋️", "🎒", "🧳", "👜", "🗄️", "📦", "🧰", "🛒"]
 
 watch(
@@ -33,6 +36,8 @@ watch(
       images: JSON.parse(JSON.stringify(node?.images || [])),
     })
     errorMessage.value = ""
+    imageMessage.value = ""
+    processingImage.value = false
     saving.value = false
   },
   { immediate: true },
@@ -41,17 +46,27 @@ watch(
 async function handleImage(event) {
   const file = event.target.files?.[0]
   if (!file) return
-  const url = await new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-  form.images = [{ id: crypto.randomUUID(), url, caption: "" }]
-  event.target.value = ""
+  processingImage.value = true
+  errorMessage.value = ""
+  imageMessage.value = "正在优化头像…"
+  try {
+    const result = await optimizeImageFile(file, { maxOutputBytes: 600 * 1024, maxDimension: 1200 })
+    form.images = [{ id: crypto.randomUUID(), url: result.dataUrl, caption: "" }]
+    imageMessage.value = `已优化 ${formatImageBytes(result.originalBytes)} → ${formatImageBytes(result.outputBytes)}`
+  } catch (error) {
+    errorMessage.value = error.message || "头像处理失败"
+    imageMessage.value = ""
+  } finally {
+    processingImage.value = false
+    event.target.value = ""
+  }
 }
 
 async function submit() {
+  if (processingImage.value) {
+    errorMessage.value = "请等待头像处理完成"
+    return
+  }
   if (!form.name.trim()) {
     errorMessage.value = "请填写名称"
     return
@@ -78,7 +93,7 @@ async function submit() {
         })
     emit("saved", saved)
   } catch (error) {
-    errorMessage.value = error.message || "保存失败"
+    errorMessage.value = storageWriteErrorMessage(error)
   } finally {
     saving.value = false
   }
@@ -114,6 +129,7 @@ async function remove() {
       <div class="mt-5 grid grid-cols-[88px_1fr] gap-4">
         <button
           class="flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-3xl"
+          :disabled="processingImage"
           @click="imageInput?.click()"
         >
           <img v-if="form.images?.[0]" :src="form.images[0].url" class="h-full w-full object-cover" /><span v-else>{{
@@ -129,6 +145,9 @@ async function remove() {
         </div>
       </div>
       <input ref="imageInput" class="hidden" type="file" accept="image/*" @change="handleImage" />
+      <p class="mt-2 text-[11px] text-gray-400">
+        {{ processingImage ? "正在优化头像…" : imageMessage || "上传后自动压缩，减少本机存储占用" }}
+      </p>
 
       <div class="mt-4">
         <span class="mb-2 block text-xs font-medium text-gray-500">头像图标</span>
@@ -177,7 +196,7 @@ async function remove() {
 
       <button
         class="mt-5 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white disabled:bg-gray-300"
-        :disabled="saving"
+        :disabled="saving || processingImage"
         @click="submit"
       >
         {{ saving ? "保存中…" : "保存" }}

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from "vue"
+import { computed, nextTick, onMounted, ref, shallowRef } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { Capacitor } from "@capacitor/core"
 import { useUserStore } from "@/stores/useUserStore"
@@ -27,7 +27,8 @@ const storageLabel = ref("正在计算")
 const preferences = ref(getPreferences())
 const tripPreferences = ref(getTripPreferences())
 const importPreview = ref(null)
-const importPayload = ref(null)
+// 备份对象必须保持为普通可克隆数据；Vue 深层代理对象不能写入 IndexedDB。
+const importPayload = shallowRef(null)
 const fileInput = ref(null)
 const userIcons = ["😊", "😎", "🤗", "😺", "🦊", "🐼", "🐨", "🧑", "👩", "👨"]
 
@@ -107,13 +108,17 @@ async function pickBackup(event) {
 }
 async function applyRestore(mode) {
   if (!importPayload.value) return
-  await restoreBackup(importPayload.value, { mode })
-  importPayload.value = null
-  importPreview.value = null
-  await refreshStats()
-  preferences.value = getPreferences()
-  tripPreferences.value = getTripPreferences()
-  flash(mode === "replace" ? "数据已从备份替换" : "备份数据已合并")
+  try {
+    await restoreBackup(importPayload.value, { mode })
+    importPayload.value = null
+    importPreview.value = null
+    await refreshStats()
+    preferences.value = getPreferences()
+    tripPreferences.value = getTripPreferences()
+    flash(mode === "replace" ? "数据已从备份替换" : "备份数据已合并")
+  } catch (error) {
+    flash(`恢复失败：${error.message || "请检查备份文件和本机存储空间"}`)
+  }
 }
 async function clearData() {
   if (!window.confirm("将删除本机所有物品、行程和核对记录。建议先导出备份。确定继续吗？")) return
