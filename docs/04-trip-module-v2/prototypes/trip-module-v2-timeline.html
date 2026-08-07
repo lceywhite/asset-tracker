@@ -1,0 +1,2975 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>行程模块 v2 · 行动时间轴</title>
+    <style>
+      :root {
+        --canvas: #e9e7e1;
+        --surface: #f8f6f1;
+        --card: #ffffff;
+        --ink: #1c2421;
+        --muted: #75807b;
+        --line: #dedfd9;
+        --teal: #177f72;
+        --teal-deep: #0e655c;
+        --teal-soft: #e3f0ec;
+        --warm: #d28c57;
+        --warm-soft: #f5e9de;
+        --danger: #b75b50;
+        --danger-soft: #f6e7e4;
+        --shadow: 0 18px 48px rgba(47, 58, 53, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+        color: var(--ink);
+        background: var(--canvas);
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 76px 24px 24px;
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .prototype-nav {
+        position: fixed;
+        z-index: 50;
+        top: 16px;
+        left: 50%;
+        display: flex;
+        max-width: calc(100vw - 24px);
+        gap: 5px;
+        padding: 6px;
+        overflow-x: auto;
+        border: 1px solid rgba(222, 223, 217, 0.9);
+        border-radius: 15px;
+        background: rgba(248, 246, 241, 0.95);
+        box-shadow: 0 10px 28px rgba(47, 58, 53, 0.12);
+        transform: translateX(-50%);
+        backdrop-filter: blur(18px);
+      }
+
+      .prototype-nav button {
+        flex: 0 0 auto;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .prototype-nav button.active {
+        color: white;
+        background: var(--teal);
+      }
+
+      .phone {
+        position: relative;
+        width: 390px;
+        height: 844px;
+        overflow: hidden;
+        border: 1px solid rgba(29, 39, 35, 0.08);
+        border-radius: 42px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: none;
+        background: var(--surface);
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .status {
+        height: 48px;
+        padding: 15px 22px 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .signals {
+        display: flex;
+        gap: 6px;
+      }
+
+      .topbar {
+        height: 59px;
+        padding: 3px 20px 11px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .topbar.compact {
+        height: 54px;
+        padding-bottom: 8px;
+      }
+
+      .topbar.home-tools {
+        gap: 9px;
+      }
+
+      .home-search {
+        position: relative;
+        flex: 1;
+      }
+
+      .home-search span {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        color: var(--muted);
+        font-size: 15px;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .home-search input {
+        width: 100%;
+        height: 38px;
+        padding: 0 13px 0 35px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        outline: none;
+        color: var(--ink);
+        background: var(--card);
+        font-size: 11px;
+      }
+
+      .home-search input:focus {
+        border-color: rgba(23, 127, 114, 0.55);
+        box-shadow: 0 0 0 3px rgba(23, 127, 114, 0.08);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 0;
+        font-size: 27px;
+        line-height: 1.08;
+        letter-spacing: -0.8px;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+        font-size: 15px;
+        letter-spacing: -0.25px;
+      }
+
+      h3 {
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .eyebrow {
+        margin: 0 0 2px;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .back-button,
+      .text-button,
+      .icon-button {
+        border: 0;
+      }
+
+      .back-button,
+      .text-button {
+        background: transparent;
+      }
+
+      .back-button {
+        padding: 7px 5px;
+        color: var(--teal-deep);
+        font-size: 21px;
+      }
+
+      .text-button {
+        padding: 8px 0;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .icon-button {
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        color: var(--teal-deep);
+        background: var(--card);
+        font-weight: 700;
+      }
+
+      .content {
+        height: calc(100% - 102px);
+        padding: 8px 18px 96px;
+        overflow-y: auto;
+        scrollbar-width: none;
+      }
+
+      .content::-webkit-scrollbar,
+      .date-strip::-webkit-scrollbar {
+        display: none;
+      }
+
+      .home-content {
+        height: calc(100% - 107px);
+      }
+
+      .calendar-reveal {
+        width: 100%;
+        padding: 7px 2px 9px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 0;
+        color: var(--ink);
+        background: transparent;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .calendar-reveal small {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 400;
+        transition: transform 160ms ease;
+      }
+
+      .calendar-reveal[aria-expanded="true"] small {
+        transform: rotate(180deg);
+      }
+
+      .calendar-panel {
+        display: none;
+        margin-bottom: 12px;
+      }
+
+      .calendar-panel.open {
+        display: block;
+      }
+
+      .date-strip {
+        min-height: 70px;
+        margin: 0 -4px 12px;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+      }
+
+      .date {
+        position: relative;
+        border: 0;
+        border-radius: 15px;
+        color: var(--muted);
+        background: transparent;
+      }
+
+      .date small,
+      .date strong {
+        display: block;
+      }
+
+      .date small {
+        margin-bottom: 5px;
+        font-size: 9px;
+      }
+
+      .date strong {
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .date.has-trip::after {
+        position: absolute;
+        bottom: 6px;
+        left: calc(50% - 2px);
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--warm);
+        content: "";
+      }
+
+      .date.active {
+        color: white;
+        background: var(--teal);
+        box-shadow: 0 6px 15px rgba(23, 127, 114, 0.18);
+      }
+
+      .date.active strong {
+        color: white;
+      }
+
+      .date.active::after {
+        background: white;
+      }
+
+      .section-head,
+      .row,
+      .ready-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .section-head {
+        margin: 15px 0 9px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+      }
+
+      .section-head span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .timeline {
+        position: relative;
+      }
+
+      .timeline::before {
+        position: absolute;
+        top: 9px;
+        bottom: 9px;
+        left: 10px;
+        width: 1px;
+        background: #cfd7d3;
+        content: "";
+      }
+
+      .timeline-row {
+        position: relative;
+        margin-bottom: 13px;
+        padding-left: 29px;
+      }
+
+      .dot {
+        position: absolute;
+        z-index: 1;
+        top: 8px;
+        left: 5px;
+        width: 11px;
+        height: 11px;
+        border: 3px solid var(--surface);
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 1px var(--teal);
+      }
+
+      .dot.warm {
+        background: var(--warm);
+        box-shadow: 0 0 0 1px var(--warm);
+      }
+
+      .time-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .time-label strong {
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .card {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--card);
+      }
+
+      .action-card {
+        width: 100%;
+        text-align: left;
+        box-shadow: 0 7px 18px rgba(49, 63, 56, 0.06);
+      }
+
+      .action-card.primary-card {
+        border-color: rgba(23, 127, 114, 0.25);
+        background: linear-gradient(135deg, rgba(227, 240, 236, 0.75), transparent 58%), var(--card);
+      }
+
+      .card-title {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .card-title h3 {
+        margin-bottom: 3px;
+        font-size: 16px;
+      }
+
+      .tag,
+      .pill,
+      .type-tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9px;
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .type-tag {
+        padding: 5px 8px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .type-tag.warm {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .route {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
+        align-items: center;
+        gap: 7px;
+        margin: 12px 0;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .route i {
+        height: 1px;
+        background: #ccd5d0;
+      }
+
+      .route b {
+        color: var(--ink);
+        font-size: 11px;
+      }
+
+      .ready-line {
+        margin-bottom: 7px;
+        font-size: 10px;
+      }
+
+      .ready-line strong {
+        color: var(--teal-deep);
+        font-size: 11px;
+      }
+
+      .progress {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: #e6ebe8;
+      }
+
+      .progress span {
+        display: block;
+        width: 72%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--teal);
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 9px;
+      }
+
+      .tag,
+      .pill {
+        padding: 5px 7px;
+        color: #58645e;
+        background: #f1f3f0;
+      }
+
+      .tag.warm {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .bottom-nav {
+        position: absolute;
+        z-index: 5;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 83px;
+        padding: 10px 12px 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 58px 1fr 1fr;
+        align-items: end;
+        border-top: 1px solid rgba(209, 213, 210, 0.85);
+        background: rgba(250, 249, 246, 0.95);
+        backdrop-filter: blur(18px);
+      }
+
+      .nav-item {
+        color: #8a938f;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .nav-item span {
+        display: block;
+        height: 22px;
+        margin-bottom: 2px;
+        font-size: 18px;
+      }
+
+      .nav-item.active {
+        color: var(--teal);
+      }
+
+      .plus {
+        align-self: start;
+        width: 50px;
+        height: 50px;
+        margin: -25px auto 0;
+        border: 4px solid var(--surface);
+        border-radius: 50%;
+        color: white;
+        background: var(--teal);
+        box-shadow: 0 8px 18px rgba(23, 127, 114, 0.27);
+        font-size: 28px;
+        font-weight: 300;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--card);
+      }
+
+      .calendar-grid span {
+        position: relative;
+        min-height: 35px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .calendar-grid span.action-day::after {
+        position: absolute;
+        right: 6px;
+        bottom: 5px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--teal);
+        content: "";
+      }
+
+      .calendar-grid span.selected {
+        color: white;
+        background: var(--teal);
+      }
+
+      .calendar-grid span.selected::after {
+        background: white;
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 11px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .field input,
+      .field textarea,
+      .field select {
+        width: 100%;
+        min-width: 0;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        outline: none;
+        color: var(--ink);
+        background: #fbfbf9;
+        font-size: 12px;
+      }
+
+      .field textarea {
+        min-height: 66px;
+        resize: none;
+      }
+
+      .two-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+
+      .section-gap {
+        margin-top: 13px;
+      }
+
+      .type-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 7px;
+      }
+
+      .type-option {
+        min-height: 62px;
+        padding: 8px 3px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        color: var(--muted);
+        background: var(--card);
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .type-option span {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 18px;
+      }
+
+      .type-option.selected {
+        border-color: rgba(23, 127, 114, 0.4);
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .trip-kind {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+      }
+
+      .trip-kind button {
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: var(--muted);
+        background: #fbfbf9;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .trip-kind button.selected {
+        border-color: var(--teal);
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .pack-row,
+      .info-row {
+        padding: 10px 0;
+        border-bottom: 1px solid #eceeea;
+      }
+
+      .pack-row:last-child,
+      .info-row:last-child {
+        border-bottom: 0;
+      }
+
+      .pack-icon,
+      .info-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .mini-copy {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .mini-copy h3,
+      .mini-copy p {
+        margin-bottom: 2px;
+      }
+
+      .chevron {
+        color: #a1aaa5;
+        font-size: 19px;
+      }
+
+      .primary,
+      .secondary,
+      .danger-button {
+        min-height: 43px;
+        padding: 10px 12px;
+        border-radius: 13px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .primary {
+        border: 0;
+        color: white;
+        background: var(--teal);
+      }
+
+      .secondary {
+        border: 1px solid var(--line);
+        color: var(--teal-deep);
+        background: var(--card);
+      }
+
+      .danger-button {
+        border: 1px solid #eed0ca;
+        color: var(--danger);
+        background: var(--danger-soft);
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+
+      .hero-detail {
+        border-color: rgba(23, 127, 114, 0.23);
+        background: linear-gradient(145deg, rgba(227, 240, 236, 0.82), transparent 65%), var(--card);
+      }
+
+      .journey-facts {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        margin-top: 11px;
+      }
+
+      .journey-fact {
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .journey-fact span,
+      .journey-fact strong {
+        display: block;
+      }
+
+      .journey-fact span {
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .journey-fact strong {
+        font-size: 11px;
+      }
+
+      .check-banner {
+        border-color: rgba(23, 127, 114, 0.2);
+        background: var(--teal-soft);
+      }
+
+      .check-banner strong {
+        color: var(--teal-deep);
+      }
+
+      .readiness-result {
+        display: none;
+      }
+
+      .readiness-result.show {
+        display: block;
+      }
+
+      .check-panel {
+        margin-top: 13px;
+      }
+
+      .check-panel .primary {
+        width: 100%;
+      }
+
+      .check-panel .readiness-result {
+        margin-bottom: 12px;
+      }
+
+      .list-action {
+        width: 100%;
+        padding: 11px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        border-top: 1px solid #eceeea;
+        color: var(--ink);
+        background: transparent;
+        text-align: left;
+      }
+
+      .list-action .pack-icon {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .preference-note {
+        border-color: rgba(210, 140, 87, 0.24);
+        background: linear-gradient(145deg, rgba(245, 233, 222, 0.72), transparent 70%), var(--card);
+      }
+
+      .preference-note .info-icon {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .packing-content {
+        padding-bottom: 128px;
+      }
+
+      .preference-note .row {
+        align-items: flex-start;
+      }
+
+      .preference-link {
+        flex: 0 0 auto;
+        padding: 5px 0 5px 8px;
+        border: 0;
+        color: var(--teal-deep);
+        background: transparent;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .add-container-card {
+        width: 100%;
+        padding: 13px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px dashed rgba(23, 127, 114, 0.36);
+        border-radius: 17px;
+        color: var(--teal-deep);
+        background: rgba(227, 240, 236, 0.44);
+        text-align: left;
+      }
+
+      .add-container-card strong,
+      .add-container-card small {
+        display: block;
+      }
+
+      .add-container-card strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .add-container-card small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .selection-tools {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+      }
+
+      .selection-tools button {
+        min-height: 36px;
+        padding: 7px 8px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        color: var(--teal-deep);
+        background: var(--card);
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .packing-container {
+        padding: 0 14px;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease;
+      }
+
+      .packing-container.drop-target {
+        border-color: var(--teal);
+        background: rgba(227, 240, 236, 0.72);
+      }
+
+      .container-head {
+        padding: 13px 0 10px;
+        display: grid;
+        grid-template-columns: 38px 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .container-head strong,
+      .container-head small {
+        display: block;
+      }
+
+      .container-head strong {
+        margin-bottom: 2px;
+        font-size: 12px;
+      }
+
+      .container-head small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .drag-hint {
+        color: #a7afaa;
+        font-size: 13px;
+        letter-spacing: -2px;
+      }
+
+      .container-items {
+        border-top: 1px solid #eceeea;
+      }
+
+      .swipe-row {
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid #eceeea;
+        background: #d86155;
+      }
+
+      .swipe-row.dragging {
+        opacity: 0.45;
+      }
+
+      .swipe-delete {
+        position: absolute;
+        z-index: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 66px;
+        border: 0;
+        color: white;
+        background: #d86155;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .item-content {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        min-height: 58px;
+        padding: 9px 0;
+        display: grid;
+        grid-template-columns: 23px 34px 1fr 32px;
+        gap: 9px;
+        align-items: center;
+        color: var(--ink);
+        background: var(--card);
+        text-align: left;
+        touch-action: pan-y;
+        transition: transform 180ms ease;
+      }
+
+      .swipe-row.swiped .item-content {
+        transform: translateX(-66px);
+      }
+
+      .focus-check {
+        width: 20px;
+        height: 20px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: transparent;
+        background: #fbfbf9;
+        font-size: 11px;
+      }
+
+      .swipe-row.selected .focus-check {
+        border-color: var(--teal);
+        color: white;
+        background: var(--teal);
+      }
+
+      .item-content strong,
+      .item-content small {
+        display: block;
+      }
+
+      .item-content strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .item-content small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .item-star {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 9px;
+        color: #b7beb9;
+        background: transparent;
+        font-size: 18px;
+      }
+
+      .item-star.starred {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .container-add-item {
+        width: 100%;
+        min-height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 0;
+        color: var(--teal-deep);
+        background: transparent;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .batch-toolbar {
+        position: absolute;
+        z-index: 12;
+        right: 14px;
+        bottom: 14px;
+        left: 14px;
+        padding: 9px;
+        display: none;
+        grid-template-columns: auto repeat(3, 1fr);
+        gap: 7px;
+        align-items: center;
+        border: 1px solid rgba(29, 39, 35, 0.09);
+        border-radius: 17px;
+        background: rgba(255, 255, 253, 0.96);
+        box-shadow: 0 10px 28px rgba(39, 55, 48, 0.18);
+        backdrop-filter: blur(14px);
+      }
+
+      .batch-toolbar.show {
+        display: grid;
+      }
+
+      .batch-toolbar > span {
+        padding: 0 4px;
+        color: var(--muted);
+        font-size: 9px;
+        white-space: nowrap;
+      }
+
+      .batch-toolbar button {
+        min-height: 36px;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        color: var(--teal-deep);
+        background: var(--card);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .batch-toolbar button.danger-action {
+        color: var(--danger);
+      }
+
+      .modal-layer {
+        position: absolute;
+        z-index: 30;
+        inset: 0;
+        display: none;
+        align-items: flex-end;
+        padding: 18px;
+        background: rgba(17, 25, 22, 0.34);
+      }
+
+      .modal-layer.open {
+        display: flex;
+      }
+
+      .bottom-sheet,
+      .confirm-dialog {
+        width: 100%;
+        padding: 16px;
+        border-radius: 22px;
+        background: var(--card);
+        box-shadow: 0 20px 44px rgba(27, 38, 33, 0.24);
+      }
+
+      .confirm-layer {
+        align-items: center;
+      }
+
+      .confirm-dialog h3,
+      .bottom-sheet h3 {
+        margin: 0 0 5px;
+        font-size: 15px;
+      }
+
+      .confirm-dialog p,
+      .bottom-sheet > p {
+        margin: 0 0 13px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.55;
+      }
+
+      .sheet-option {
+        width: 100%;
+        padding: 11px 0;
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        gap: 9px;
+        align-items: center;
+        border: 0;
+        border-top: 1px solid #eceeea;
+        color: var(--ink);
+        background: transparent;
+        text-align: left;
+      }
+
+      .sheet-option strong,
+      .sheet-option small {
+        display: block;
+      }
+
+      .sheet-option strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .sheet-option small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .dialog-actions {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .dialog-actions button {
+        min-height: 39px;
+      }
+
+      .library-tabs {
+        padding: 3px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        border-radius: 13px;
+        background: #eceeea;
+      }
+
+      .library-tabs button {
+        min-height: 34px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .library-tabs button.active {
+        color: var(--ink);
+        background: var(--card);
+        box-shadow: 0 2px 7px rgba(39, 55, 48, 0.08);
+      }
+
+      .library-panel[hidden],
+      .drill-panel[hidden] {
+        display: none;
+      }
+
+      .library-search {
+        margin-top: 11px;
+      }
+
+      .library-search input {
+        width: 100%;
+        height: 39px;
+        padding: 0 12px 0 36px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        outline: none;
+        background: var(--card);
+        font: inherit;
+      }
+
+      .library-search span {
+        left: 13px;
+      }
+
+      .library-result,
+      .space-drill {
+        width: 100%;
+        padding: 11px 0;
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        gap: 9px;
+        align-items: center;
+        border: 0;
+        border-bottom: 1px solid #eceeea;
+        color: var(--ink);
+        background: transparent;
+        text-align: left;
+      }
+
+      .space-drill {
+        grid-template-columns: 36px 1fr auto;
+      }
+
+      .library-result strong,
+      .library-result small,
+      .space-drill strong,
+      .space-drill small {
+        display: block;
+      }
+
+      .library-result strong,
+      .space-drill strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .library-result small,
+      .space-drill small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .library-add-button {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 10px;
+        color: #8ca3a0;
+        background: transparent;
+        font-size: 22px;
+        font-weight: 300;
+      }
+
+      .library-result.selected .library-add-button {
+        color: white;
+        background: var(--teal);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .library-result.selected {
+        background: rgba(227, 240, 236, 0.35);
+      }
+
+      .library-cart {
+        padding-top: 3px;
+        padding-bottom: 3px;
+      }
+
+      .cart-item {
+        padding: 10px 0;
+        display: grid;
+        grid-template-columns: 34px 1fr 30px;
+        gap: 9px;
+        align-items: center;
+        border-bottom: 1px solid #eceeea;
+      }
+
+      .cart-item:last-child {
+        border-bottom: 0;
+      }
+
+      .cart-item strong,
+      .cart-item small {
+        display: block;
+      }
+
+      .cart-item strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .cart-item small {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .cart-remove {
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 9px;
+        color: var(--muted);
+        background: #f1f2ef;
+        font-size: 15px;
+      }
+
+      .empty-cart {
+        padding: 20px 8px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 10px;
+        line-height: 1.55;
+      }
+
+      .drill-back {
+        margin: 10px 0 2px;
+        padding: 0;
+        border: 0;
+        color: var(--teal-deep);
+        background: transparent;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .library-footer {
+        position: absolute;
+        z-index: 10;
+        right: 18px;
+        bottom: 18px;
+        left: 18px;
+      }
+
+      .library-footer button {
+        width: 100%;
+      }
+
+      .note-copy {
+        margin: 0;
+        color: var(--ink);
+        font-size: 11px;
+        line-height: 1.65;
+      }
+
+      .advanced-card {
+        border-style: dashed;
+        background: transparent;
+      }
+
+      .advanced-card .info-icon {
+        color: #8a5934;
+        background: var(--warm-soft);
+      }
+
+      .custom-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 11px;
+      }
+
+      .custom-card-head h3,
+      .custom-card-head p {
+        margin-bottom: 2px;
+      }
+
+      .day-pager {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .day-pager button {
+        padding: 8px 4px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--muted);
+        background: #fbfbf9;
+        font-size: 9px;
+        font-weight: 650;
+      }
+
+      .day-pager button.active {
+        border-color: rgba(23, 127, 114, 0.35);
+        color: var(--teal-deep);
+        background: var(--teal-soft);
+      }
+
+      .mini-schedule {
+        position: relative;
+        display: grid;
+        gap: 10px;
+      }
+
+      .mini-schedule::before {
+        position: absolute;
+        top: 7px;
+        bottom: 7px;
+        left: 35px;
+        width: 1px;
+        background: #d7deda;
+        content: "";
+      }
+
+      .schedule-row {
+        position: relative;
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 17px;
+        align-items: start;
+      }
+
+      .schedule-row::before {
+        position: absolute;
+        top: 4px;
+        left: 32px;
+        width: 7px;
+        height: 7px;
+        border: 2px solid var(--card);
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 1px var(--teal);
+        content: "";
+      }
+
+      .schedule-row time {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .schedule-row strong,
+      .schedule-row span {
+        display: block;
+      }
+
+      .schedule-row strong {
+        margin-bottom: 2px;
+        font-size: 11px;
+      }
+
+      .schedule-row span {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .check-shell {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        padding: 56px 20px 28px;
+        background: radial-gradient(circle at 50% 15%, rgba(227, 240, 236, 0.9), transparent 40%), var(--surface);
+      }
+
+      .check-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .check-counter {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .check-progress {
+        margin: 18px 0 28px;
+      }
+
+      .check-progress .progress span {
+        width: 45%;
+      }
+
+      .check-main {
+        flex: 1;
+        text-align: center;
+      }
+
+      .check-group {
+        margin-bottom: 26px;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .item-orb {
+        width: 154px;
+        height: 154px;
+        margin: 0 auto 24px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(23, 127, 114, 0.18);
+        border-radius: 50%;
+        background: var(--card);
+        box-shadow: 0 18px 40px rgba(49, 63, 56, 0.1);
+        font-size: 56px;
+      }
+
+      .check-main h1 {
+        margin-bottom: 6px;
+        font-size: 27px;
+      }
+
+      .check-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.25fr;
+        gap: 8px;
+      }
+
+      .check-actions button {
+        min-height: 49px;
+      }
+
+      .summary-mark {
+        width: 76px;
+        height: 76px;
+        margin: 12px auto 15px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        color: white;
+        background: var(--teal);
+        font-size: 34px;
+      }
+
+      .summary-title {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .summary-title h1 {
+        margin-bottom: 6px;
+      }
+
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 13px;
+      }
+
+      .result-stat {
+        padding: 13px 6px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: var(--card);
+        text-align: center;
+      }
+
+      .result-stat strong,
+      .result-stat span {
+        display: block;
+      }
+
+      .result-stat strong {
+        margin-bottom: 4px;
+        font-size: 21px;
+      }
+
+      .result-stat span {
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .toast {
+        position: absolute;
+        z-index: 20;
+        right: 32px;
+        bottom: 100px;
+        left: 32px;
+        padding: 11px 14px;
+        border-radius: 13px;
+        color: white;
+        background: rgba(28, 36, 33, 0.92);
+        text-align: center;
+        font-size: 11px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 430px) {
+        body {
+          display: block;
+          padding: 55px 0 0;
+          background: var(--surface);
+        }
+
+        .prototype-nav {
+          top: 6px;
+        }
+
+        .phone {
+          width: 100vw;
+          height: calc(100vh - 55px);
+          min-height: 700px;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="prototype-nav" aria-label="原型页面切换">
+      <button class="active" data-screen-target="home">主页</button>
+      <button data-screen-target="create">新建</button>
+      <button data-screen-target="item-picker">清单管理</button>
+      <button data-screen-target="library-picker">物品库</button>
+      <button data-screen-target="detail">行程档案</button>
+      <button data-screen-target="check">核对</button>
+      <button data-screen-target="summary">结果</button>
+    </nav>
+
+    <main class="phone" aria-label="行程模块 v2 行动时间轴原型">
+      <section class="screen active" data-screen="home">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar home-tools">
+          <label class="home-search">
+            <span>⌕</span>
+            <input
+              type="search"
+              placeholder="搜索行程、地点或类型"
+              aria-label="搜索行程、地点或类型"
+              data-trip-search-input
+            />
+          </label>
+          <button class="icon-button" data-go="create">＋</button>
+        </div>
+        <div class="content home-content" id="home-content">
+          <button class="calendar-reveal" type="button" data-calendar-toggle aria-expanded="false">
+            <span data-selected-date-label>本周 · 7月27日—8月2日</span><small>⌄</small>
+          </button>
+          <nav class="date-strip" aria-label="本周日期">
+            <button class="date has-trip" type="button" data-week-date="7月27日 周一">
+              <small>一</small><strong>27</strong>
+            </button>
+            <button class="date has-trip" type="button" data-week-date="7月28日 周二">
+              <small>二</small><strong>28</strong>
+            </button>
+            <button class="date active has-trip" type="button" data-week-date="今天 · 7月29日">
+              <small>三</small><strong>29</strong>
+            </button>
+            <button class="date has-trip" type="button" data-week-date="7月30日 周四">
+              <small>四</small><strong>30</strong>
+            </button>
+            <button class="date has-trip" type="button" data-week-date="7月31日 周五">
+              <small>五</small><strong>31</strong>
+            </button>
+            <button class="date has-trip" type="button" data-week-date="8月1日 周六">
+              <small>六</small><strong>1</strong>
+            </button>
+            <button class="date" type="button" data-week-date="8月2日 周日"><small>日</small><strong>2</strong></button>
+          </nav>
+          <div class="calendar-panel" data-calendar-panel>
+            <div class="section-head" style="margin-top: 0">
+              <h2>2026 年 7 月</h2>
+              <span>12 个行程</span>
+            </div>
+            <div class="calendar-grid">
+              <span>29</span><span>30</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              <span class="action-day">6</span><span class="action-day">7</span><span class="action-day">8</span
+              ><span class="action-day">9</span><span class="action-day">10</span><span>11</span><span>12</span>
+              <span class="action-day">13</span><span class="action-day">14</span><span class="action-day">15</span
+              ><span class="action-day">16</span><span class="action-day">17</span><span>18</span><span>19</span>
+              <span class="action-day">20</span><span class="action-day">21</span><span class="action-day">22</span
+              ><span class="action-day">23</span><span class="action-day">24</span><span>25</span><span>26</span>
+              <span class="action-day">27</span><span class="action-day">28</span
+              ><span class="selected action-day">29</span><span class="action-day">30</span
+              ><span class="action-day">31</span><span class="action-day">1</span><span>2</span>
+            </div>
+          </div>
+          <div class="timeline">
+            <article class="timeline-row" data-trip-search="工作日通勤 滨江花园 科技园 地铁 通勤">
+              <span class="dot"></span>
+              <div class="time-label"><strong>08:10</strong><span>40 分钟后出发</span></div>
+              <button class="card action-card primary-card" data-go="detail">
+                <div class="card-title">
+                  <div>
+                    <h3>工作日通勤</h3>
+                    <p>滨江花园 → 科技园 · 地铁 · 往返</p>
+                  </div>
+                  <span class="type-tag">通勤</span>
+                </div>
+                <div class="tag-row"><span class="tag">9 件物品</span><span class="tag warm">3 项星标</span></div>
+              </button>
+            </article>
+          </div>
+          <div class="section-head">
+            <h2>接下来</h2>
+            <span>未来 7 天</span>
+          </div>
+          <section class="card">
+            <div class="info-row row" data-trip-search="杭州周末旅行 旅行 杭州 往返">
+              <div class="info-icon">🧳</div>
+              <div class="mini-copy">
+                <h3>杭州周末旅行</h3>
+                <p>7月31日–8月2日 · 往返 · 3 个移动容器</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <div class="info-row row" data-trip-search="搬家第一批打包 搬家 老房子 滨江花园">
+              <div class="info-icon">📦</div>
+              <div class="mini-copy">
+                <h3>搬家第一批打包</h3>
+                <p>8月3日 · 老房子 → 滨江花园 · 6 个移动容器</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+          </section>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item"><span>▣</span>物品</div>
+          <div class="nav-item active"><span>⌁</span>行程</div>
+          <button class="plus" data-go="create">＋</button>
+          <div class="nav-item"><span>◎</span>社区</div>
+          <div class="nav-item"><span>●</span>我的</div>
+        </nav>
+      </section>
+
+      <section class="screen" data-screen="create">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="home">‹</button>
+          <h2 style="margin: 0">新建行程</h2>
+          <button class="text-button" data-toast="草稿已保存">存草稿</button>
+        </div>
+        <div class="content">
+          <div class="form-stack">
+            <section class="card">
+              <div class="section-head" style="margin-top: 0">
+                <h2>基本信息</h2>
+              </div>
+              <div class="field"><label>行程名称</label><input value="工作日通勤" /></div>
+              <div class="section-gap">
+                <label style="color: var(--muted); font-size: 10px; font-weight: 650">类型</label>
+                <div class="type-grid" style="margin-top: 6px">
+                  <button class="type-option selected"><span>🚇</span>通勤</button>
+                  <button class="type-option"><span>🧳</span>旅行</button>
+                  <button class="type-option"><span>📦</span>搬家</button>
+                  <button class="type-option"><span>＋</span>自定义</button>
+                </div>
+              </div>
+            </section>
+            <section class="card">
+              <div class="section-head" style="margin-top: 0">
+                <h2>行程信息</h2>
+              </div>
+              <div class="trip-kind"><button>单程</button><button class="selected">往返</button></div>
+              <div class="two-cols section-gap">
+                <div class="field"><label>出发时间</label><input value="07-29 08:10" /></div>
+                <div class="field"><label>返程时间</label><input value="07-29 18:20" /></div>
+              </div>
+              <div class="two-cols section-gap">
+                <div class="field"><label>出发地点</label><input value="滨江花园" /></div>
+                <div class="field"><label>到达地点</label><input value="科技园" /></div>
+              </div>
+              <div class="field section-gap">
+                <label>出行方式</label>
+                <select>
+                  <option>地铁 / 公共交通</option>
+                  <option>步行</option>
+                  <option>驾车</option>
+                  <option>火车 / 飞机</option>
+                  <option>搬运车辆</option>
+                </select>
+              </div>
+            </section>
+            <section class="card">
+              <div class="section-head" style="margin-top: 0">
+                <h2>携带物品清单</h2>
+                <span>按移动容器</span>
+              </div>
+              <div class="pack-row row">
+                <div class="pack-icon">🎒</div>
+                <div class="mini-copy">
+                  <h3>通勤背包</h3>
+                  <p>6 项 · 2 项星标</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+              <div class="pack-row row">
+                <div class="pack-icon">👝</div>
+                <div class="mini-copy">
+                  <h3>随身小包</h3>
+                  <p>3 项 · 1 项星标</p>
+                </div>
+                <span class="chevron">›</span>
+              </div>
+              <button class="list-action" type="button" data-open-item-picker="create">
+                <div class="pack-icon">＋</div>
+                <div class="mini-copy">
+                  <h3>添加物品</h3>
+                  <p>添加移动容器，并在容器内选择物品</p>
+                </div>
+                <span class="chevron">›</span>
+              </button>
+            </section>
+            <section class="card">
+              <div class="section-head" style="margin-top: 0">
+                <h2>通用信息</h2>
+              </div>
+              <div class="field"><label>备注</label><textarea>下班离开工位前检查电脑、电源和门禁卡。</textarea></div>
+            </section>
+            <button class="primary" data-go="detail">保存行程档案</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="item-picker">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" type="button" data-item-back>‹</button>
+          <h2 style="margin: 0">携带物品清单</h2>
+          <button class="text-button" type="button" data-item-save>完成</button>
+        </div>
+        <div class="content packing-content">
+          <section class="card preference-note">
+            <div class="row">
+              <div class="info-icon">★</div>
+              <div class="mini-copy">
+                <h3>星标物品提醒</h3>
+                <p>当前规则：出发和结束前一天晚上提醒</p>
+              </div>
+              <button class="preference-link" type="button" data-toast="打开设置－偏好设置">设置 ›</button>
+            </div>
+          </section>
+          <div class="section-head">
+            <h2>物品清单</h2>
+            <span data-packing-summary>2 个移动容器 · 9 项</span>
+          </div>
+          <div class="selection-tools">
+            <button type="button" data-select-all>全选全部物品</button>
+            <button type="button" data-clear-selection>清除选择</button>
+          </div>
+          <section class="card packing-container section-gap" data-container-drop data-container-name="通勤背包">
+            <div class="container-head">
+              <span class="pack-icon">🎒</span>
+              <span>
+                <strong>通勤背包</strong>
+                <small data-container-count>6 项 · 2 项星标</small>
+              </span>
+              <span class="drag-hint" aria-label="可拖入物品">•••</span>
+            </div>
+            <div class="container-items" data-container-items>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择 MacBook Pro">✓</button>
+                  <span class="pack-icon">💻</span>
+                  <span><strong>MacBook Pro</strong><small>电子设备 · ITM-00018</small></span>
+                  <button
+                    class="item-star starred"
+                    type="button"
+                    data-item-star
+                    aria-pressed="true"
+                    aria-label="取消星标"
+                  >
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择 USB-C 充电器">✓</button>
+                  <span class="pack-icon">🔌</span>
+                  <span><strong>USB-C 充电器</strong><small>配件 · ITM-00019</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择公司门禁卡">✓</button>
+                  <span class="pack-icon">▣</span>
+                  <span><strong>公司门禁卡</strong><small>证件卡片 · ITM-00022</small></span>
+                  <button
+                    class="item-star starred"
+                    type="button"
+                    data-item-star
+                    aria-pressed="true"
+                    aria-label="取消星标"
+                  >
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择折叠伞">✓</button>
+                  <span class="pack-icon">☂</span>
+                  <span><strong>折叠伞</strong><small>日用品 · ITM-00027</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择工作笔记本">✓</button>
+                  <span class="pack-icon">▤</span>
+                  <span><strong>工作笔记本</strong><small>办公用品 · ITM-00031</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择移动电源">✓</button>
+                  <span class="pack-icon">▰</span>
+                  <span><strong>移动电源</strong><small>电子设备 · ITM-00034</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button class="container-add-item" type="button" data-open-library="通勤背包">＋ 从物品库添加</button>
+          </section>
+          <section class="card packing-container section-gap" data-container-drop data-container-name="随身小包">
+            <div class="container-head">
+              <span class="pack-icon">👝</span>
+              <span>
+                <strong>随身小包</strong>
+                <small data-container-count>3 项 · 1 项星标</small>
+              </span>
+              <span class="drag-hint" aria-label="可拖入物品">•••</span>
+            </div>
+            <div class="container-items" data-container-items>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择手机">✓</button>
+                  <span class="pack-icon">▯</span>
+                  <span><strong>手机</strong><small>电子设备 · ITM-00003</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择家门钥匙">✓</button>
+                  <span class="pack-icon">🔑</span>
+                  <span><strong>家门钥匙</strong><small>钥匙 · ITM-00005</small></span>
+                  <button
+                    class="item-star starred"
+                    type="button"
+                    data-item-star
+                    aria-pressed="true"
+                    aria-label="取消星标"
+                  >
+                    ★
+                  </button>
+                </div>
+              </div>
+              <div class="swipe-row" data-item-row draggable="true">
+                <button class="swipe-delete" type="button" data-delete-one>删除</button>
+                <div class="item-content" data-swipe-content>
+                  <button class="focus-check" type="button" data-item-select aria-label="选择无线耳机">✓</button>
+                  <span class="pack-icon">🎧</span>
+                  <span><strong>无线耳机</strong><small>电子设备 · ITM-00008</small></span>
+                  <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">
+                    ★
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button class="container-add-item" type="button" data-open-library="随身小包">＋ 从物品库添加</button>
+          </section>
+          <button class="add-container-card section-gap" type="button" data-open-container-sheet>
+            <span class="pack-icon">＋</span>
+            <span>
+              <strong>添加移动容器</strong>
+              <small>选择已有背包、箱子，或新建移动容器</small>
+            </span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+        <div class="batch-toolbar" data-batch-toolbar>
+          <span data-selection-count>已选 0 项</span>
+          <button type="button" data-batch-item-action="mark">标记</button>
+          <button type="button" data-batch-item-action="move">移动</button>
+          <button class="danger-action" type="button" data-batch-item-action="delete">删除</button>
+        </div>
+        <div class="modal-layer" data-container-sheet>
+          <div class="bottom-sheet">
+            <h3>添加移动容器</h3>
+            <p>物品必须归入一个移动容器后才能加入本次行程。</p>
+            <button class="sheet-option" type="button" data-add-existing-container="28 寸行李箱">
+              <span class="pack-icon">🧳</span>
+              <span><strong>28 寸行李箱</strong><small>已有移动容器 · 我的包包</small></span>
+              <span class="chevron">＋</span>
+            </button>
+            <button class="sheet-option" type="button" data-add-existing-container="健身包">
+              <span class="pack-icon">🎒</span>
+              <span><strong>健身包</strong><small>已有移动容器 · 我的家 / 玄关</small></span>
+              <span class="chevron">＋</span>
+            </button>
+            <button class="sheet-option" type="button" data-create-container>
+              <span class="pack-icon">＋</span>
+              <span><strong>新建移动容器</strong><small>创建后同步保存到物品空间</small></span>
+              <span class="chevron">›</span>
+            </button>
+            <button class="secondary section-gap" style="width: 100%" type="button" data-close-modal>取消</button>
+          </div>
+        </div>
+        <div class="modal-layer" data-move-sheet>
+          <div class="bottom-sheet">
+            <h3>移动到其他容器</h3>
+            <p>所选物品将在本次行程内重新分组，物品库中的实际位置不变。</p>
+            <button class="sheet-option" type="button" data-move-target="通勤背包">
+              <span class="pack-icon">🎒</span><span><strong>通勤背包</strong><small>移动容器</small></span
+              ><span class="chevron">›</span>
+            </button>
+            <button class="sheet-option" type="button" data-move-target="随身小包">
+              <span class="pack-icon">👝</span><span><strong>随身小包</strong><small>移动容器</small></span
+              ><span class="chevron">›</span>
+            </button>
+            <button class="secondary section-gap" style="width: 100%" type="button" data-close-modal>取消</button>
+          </div>
+        </div>
+        <div class="modal-layer" data-new-container-sheet>
+          <div class="bottom-sheet">
+            <h3>新建移动容器</h3>
+            <p>新容器会同步保存到物品空间，之后可在其他行程中继续使用。</p>
+            <div class="field">
+              <label>容器名称</label>
+              <input type="text" value="周末旅行包" data-new-container-name />
+            </div>
+            <div class="field section-gap">
+              <label>平时存放位置</label>
+              <input type="text" value="我的家 / 玄关" />
+            </div>
+            <div class="dialog-actions">
+              <button class="secondary" type="button" data-close-modal>取消</button>
+              <button class="primary" type="button" data-confirm-new-container>创建并加入</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-layer confirm-layer" data-delete-dialog>
+          <div class="confirm-dialog">
+            <h3>从本次行程移出物品？</h3>
+            <p data-delete-copy>物品只会从携带清单移出，不会删除物品库档案。</p>
+            <div class="dialog-actions">
+              <button class="secondary" type="button" data-close-modal>取消</button>
+              <button class="primary" type="button" data-confirm-delete>确认移出</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="library-picker">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" type="button" data-library-back>‹</button>
+          <h2 style="margin: 0">选择物品</h2>
+          <button class="text-button" type="button" data-clear-library>清除</button>
+        </div>
+        <div class="content packing-content">
+          <section class="card preference-note">
+            <div class="row">
+              <div class="info-icon">🎒</div>
+              <div class="mini-copy">
+                <h3>添加到 <span data-library-target>通勤背包</span></h3>
+                <p>可多选物品；物品不能脱离移动容器单独加入行程</p>
+              </div>
+            </div>
+          </section>
+          <div class="library-tabs section-gap" role="tablist">
+            <button class="active" type="button" data-library-tab="search">搜索物品</button>
+            <button type="button" data-library-tab="layout">按空间查找</button>
+          </div>
+          <div class="library-panel" data-library-panel="search">
+            <label class="home-search library-search">
+              <span>⌕</span>
+              <input type="search" placeholder="搜索物品名称、ID 或标签" data-library-search-input />
+            </label>
+            <section class="card section-gap">
+              <div
+                class="library-result"
+                data-library-result="降噪耳机 ITM-00042 电子设备"
+                data-library-key="headphones"
+              >
+                <span class="pack-icon">🎧</span>
+                <span><strong>降噪耳机</strong><small>电子设备 · ITM-00042</small></span>
+                <button class="library-add-button" type="button" data-library-add aria-label="添加降噪耳机">＋</button>
+              </div>
+              <div class="library-result" data-library-result="护照 ITM-00051 证件" data-library-key="passport">
+                <span class="pack-icon">▣</span>
+                <span><strong>护照</strong><small>证件 · ITM-00051</small></span>
+                <button class="library-add-button" type="button" data-library-add aria-label="添加护照">＋</button>
+              </div>
+              <div class="library-result" data-library-result="相机 ITM-00062 摄影" data-library-key="camera">
+                <span class="pack-icon">▧</span>
+                <span><strong>相机</strong><small>摄影器材 · ITM-00062</small></span>
+                <button class="library-add-button" type="button" data-library-add aria-label="添加相机">＋</button>
+              </div>
+            </section>
+          </div>
+          <div class="library-panel" data-library-panel="layout" hidden>
+            <button class="drill-back" type="button" data-drill-back hidden>‹ 返回上一级</button>
+            <section class="card section-gap drill-panel" data-drill-panel="root">
+              <button class="space-drill" type="button" data-drill-to="home-space">
+                <span class="pack-icon">⌂</span><span><strong>我的家</strong><small>2 个空间 · 68 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+              <button class="space-drill" type="button" data-drill-to="bags-space">
+                <span class="pack-icon">🎒</span
+                ><span><strong>我的包包</strong><small>4 个移动容器 · 31 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+              <button class="space-drill" type="button" data-drill-to="garage-space">
+                <span class="pack-icon">▰</span><span><strong>我的车库</strong><small>1 个空间 · 17 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+            </section>
+            <section class="card section-gap drill-panel" data-drill-panel="home-space" hidden>
+              <button class="space-drill" type="button" data-drill-to="study-space">
+                <span class="pack-icon">⌂</span
+                ><span><strong>滨江花园 8 栋</strong><small>书房、卧室、玄关 · 52 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+            </section>
+            <section class="card section-gap drill-panel" data-drill-panel="study-space" hidden>
+              <div class="library-result" data-library-result="备用鼠标 ITM-00073 电子设备" data-library-key="mouse">
+                <span class="pack-icon">⌁</span>
+                <span><strong>备用鼠标</strong><small>书房 / 桌面抽屉 · ITM-00073</small></span>
+                <button class="library-add-button" type="button" data-library-add aria-label="添加备用鼠标">＋</button>
+              </div>
+              <div class="library-result" data-library-result="读卡器 ITM-00076 配件" data-library-key="card-reader">
+                <span class="pack-icon">▰</span>
+                <span><strong>读卡器</strong><small>书房 / 配件盒 · ITM-00076</small></span>
+                <button class="library-add-button" type="button" data-library-add aria-label="添加读卡器">＋</button>
+              </div>
+            </section>
+            <section class="card section-gap drill-panel" data-drill-panel="bags-space" hidden>
+              <button class="space-drill" type="button" data-drill-to="study-space">
+                <span class="pack-icon">🧳</span
+                ><span><strong>旅行收纳柜</strong><small>2 个容器 · 12 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+            </section>
+            <section class="card section-gap drill-panel" data-drill-panel="garage-space" hidden>
+              <button class="space-drill" type="button" data-drill-to="study-space">
+                <span class="pack-icon">▰</span><span><strong>车内储物格</strong><small>8 件物品</small></span
+                ><span class="chevron">›</span>
+              </button>
+            </section>
+          </div>
+          <div class="section-head">
+            <h2>本次添加</h2>
+            <span data-library-cart-count>0 项</span>
+          </div>
+          <section class="card library-cart" data-library-cart>
+            <div class="empty-cart">点击物品右侧的“＋”加入<br />已添加的物品会集中显示在这里</div>
+          </section>
+        </div>
+        <div class="library-footer">
+          <button class="primary" type="button" data-add-to-container>添加 0 项到通勤背包</button>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="detail">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="topbar compact">
+          <button class="back-button" data-go="home">‹</button>
+          <h2 style="margin: 0">行程档案</h2>
+          <button class="text-button" data-toast="打开编辑">编辑</button>
+        </div>
+        <div class="content">
+          <section class="card hero-detail">
+            <div class="card-title">
+              <div>
+                <p class="eyebrow">40 分钟后出发</p>
+                <h1>工作日通勤</h1>
+                <p>往返 · 2 个移动容器</p>
+              </div>
+              <span class="type-tag">通勤</span>
+            </div>
+            <div class="route"><b>滨江花园</b><i></i><span>地铁</span><i></i><b>科技园</b></div>
+            <div class="journey-facts">
+              <div class="journey-fact"><span>出发时间</span><strong>07月29日 08:10</strong></div>
+              <div class="journey-fact"><span>返程时间</span><strong>07月29日 18:20</strong></div>
+              <div class="journey-fact"><span>出行方式</span><strong>地铁 / 步行</strong></div>
+              <div class="journey-fact"><span>行程时长</span><strong>10 小时 10 分钟</strong></div>
+            </div>
+          </section>
+          <div class="section-head">
+            <h2>物品清单</h2>
+            <span>2 个移动容器 · 9 项</span>
+          </div>
+          <section class="card">
+            <div class="pack-row row">
+              <div class="pack-icon">🎒</div>
+              <div class="mini-copy">
+                <h3>通勤背包</h3>
+                <p>6 项 · 2 项星标</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <div class="pack-row row">
+              <div class="pack-icon">👝</div>
+              <div class="mini-copy">
+                <h3>随身小包</h3>
+                <p>3 项 · 1 项星标</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <button class="list-action" type="button" data-open-item-picker="detail">
+              <div class="pack-icon">＋</div>
+              <div class="mini-copy">
+                <h3>添加物品</h3>
+                <p>按移动容器添加、标记、移动或移出物品</p>
+              </div>
+              <span class="chevron">›</span>
+            </button>
+            <button class="list-action" type="button" data-toast="打开物品新增流程">
+              <div class="pack-icon">＋</div>
+              <div class="mini-copy">
+                <h3>行程中新增物品</h3>
+                <p>建立正式档案，同步物品库后加入移动容器</p>
+              </div>
+              <span class="chevron">›</span>
+            </button>
+          </section>
+          <section class="card check-panel">
+            <div class="readiness-result" data-readiness-result>
+              <div class="ready-line"><span>物品核对状态</span><strong>8 / 9</strong></div>
+              <div class="progress"><span style="width: 88.9%"></span></div>
+              <div class="tag-row"><span class="tag">8 项已确认</span><span class="tag warm">1 项未找到</span></div>
+            </div>
+            <button class="primary" data-go="check" data-check-entry>出发核对</button>
+          </section>
+          <div class="section-head">
+            <h2>通用信息</h2>
+          </div>
+          <section class="card">
+            <div class="custom-card-head">
+              <div>
+                <h3>备注</h3>
+                <p>7月29日更新</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <p class="note-copy">下班离开工位前检查电脑、电源和门禁卡。</p>
+          </section>
+          <section class="card section-gap" data-custom-card>
+            <div class="custom-card-head">
+              <div>
+                <h3>工作日安排</h3>
+                <p>周一至周三</p>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+            <div class="day-pager" role="tablist" aria-label="工作日安排分页">
+              <button class="active" type="button" data-day-tab="day-1" aria-selected="true">周一</button>
+              <button type="button" data-day-tab="day-2" aria-selected="false">周二</button>
+              <button type="button" data-day-tab="day-3" aria-selected="false">周三</button>
+            </div>
+            <div class="mini-schedule" data-day-panel="day-1">
+              <div class="schedule-row">
+                <time>08:10</time>
+                <div><strong>从家出发</strong><span>出门前核对通勤背包和随身小包</span></div>
+              </div>
+              <div class="schedule-row">
+                <time>08:50</time>
+                <div><strong>到达科技园</strong><span>门禁卡放回背包前袋</span></div>
+              </div>
+              <div class="schedule-row">
+                <time>18:20</time>
+                <div><strong>结束核对后返程</strong><span>重点检查电脑、充电器和门禁卡</span></div>
+              </div>
+            </div>
+            <div class="mini-schedule" data-day-panel="day-2" hidden>
+              <div class="schedule-row">
+                <time>08:10</time>
+                <div><strong>正常通勤</strong><span>沿用周一的移动容器清单</span></div>
+              </div>
+              <div class="schedule-row">
+                <time>19:00</time>
+                <div><strong>下班后健身</strong><span>增加运动包，返家前随时核对</span></div>
+              </div>
+            </div>
+            <div class="mini-schedule" data-day-panel="day-3" hidden>
+              <div class="schedule-row">
+                <time>08:10</time>
+                <div><strong>正常通勤</strong><span>沿用通勤背包和随身小包</span></div>
+              </div>
+              <div class="schedule-row">
+                <time>18:40</time>
+                <div><strong>顺路采购</strong><span>新增购物袋，并在回家前结束核对</span></div>
+              </div>
+            </div>
+          </section>
+          <section class="card advanced-card section-gap">
+            <div class="row">
+              <div class="info-icon">＋</div>
+              <div class="mini-copy">
+                <h3>新增信息卡片</h3>
+              </div>
+              <span class="chevron">›</span>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="check">
+        <div class="check-shell">
+          <div class="check-top">
+            <button class="back-button" data-go="detail">×</button>
+            <span class="check-counter">5 / 9</span>
+            <button class="text-button" data-toast="核对进度已保存">暂存</button>
+          </div>
+          <div class="check-progress">
+            <div class="progress"><span style="width: 55.6%"></span></div>
+          </div>
+          <div class="check-main">
+            <div class="check-group">出发核对 · 通勤背包</div>
+            <div class="item-orb">💻</div>
+            <h1>MacBook Pro 14"</h1>
+            <p>物品 ID · ITM-00018<br />档案位置：书房 · 办公桌</p>
+            <div class="tag-row" style="justify-content: center">
+              <span class="tag warm">星标物品</span><span class="tag">结束时需带回</span>
+            </div>
+          </div>
+          <div class="check-actions">
+            <button class="danger-button" data-toast="已标记未找到">未找到</button>
+            <button class="secondary" data-toast="已跳过此项">跳过</button>
+            <button class="primary" data-go="summary">已确认</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="summary">
+        <header class="status">
+          <span>9:41</span>
+          <div class="signals"><span>▮▮▮</span><span>5G</span><span>▰</span></div>
+        </header>
+        <div class="content" style="height: calc(100% - 48px); padding-top: 10px">
+          <div class="summary-mark">✓</div>
+          <div class="summary-title">
+            <h1>出发核对完成</h1>
+            <p>工作日通勤 · 2026年7月29日 08:06</p>
+          </div>
+          <div class="result-grid">
+            <div class="result-stat"><strong style="color: var(--teal)">8</strong><span>已确认</span></div>
+            <div class="result-stat"><strong style="color: var(--danger)">1</strong><span>未找到</span></div>
+            <div class="result-stat"><strong style="color: var(--warm)">0</strong><span>已跳过</span></div>
+          </div>
+          <section class="card">
+            <div class="section-head" style="margin-top: 0">
+              <h2>需要处理</h2>
+              <span>1 项</span>
+            </div>
+            <div class="info-row row">
+              <div class="mini-copy">
+                <h3>门禁卡</h3>
+                <p>通勤背包 · 星标物品</p>
+              </div>
+              <span style="color: var(--danger); font-size: 10px; font-weight: 700">未找到</span>
+            </div>
+          </section>
+          <button class="primary section-gap" style="width: 100%" data-go="check">只重新核对门禁卡</button>
+          <button class="secondary section-gap" style="width: 100%" data-go="detail" data-show-readiness>
+            返回行程档案
+          </button>
+        </div>
+      </section>
+
+      <div class="toast" role="status"></div>
+    </main>
+
+    <script>
+      const screens = [...document.querySelectorAll("[data-screen]")]
+      const prototypeButtons = [...document.querySelectorAll("[data-screen-target]")]
+      const toast = document.querySelector(".toast")
+      let toastTimer
+      let itemReturnScreen = "create"
+      let libraryTargetContainer = "通勤背包"
+      let pendingDeleteRows = []
+      let draggedItem = null
+      let drillHistory = ["root"]
+
+      const itemPickerScreen = document.querySelector('[data-screen="item-picker"]')
+      const libraryPickerScreen = document.querySelector('[data-screen="library-picker"]')
+
+      function showScreen(name) {
+        screens.forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name))
+        prototypeButtons.forEach((button) => button.classList.toggle("active", button.dataset.screenTarget === name))
+      }
+
+      function showToast(message) {
+        toast.textContent = message
+        toast.classList.add("show")
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1300)
+      }
+
+      function getItemRows() {
+        return [...itemPickerScreen.querySelectorAll("[data-item-row]")]
+      }
+
+      function updateContainerCounts() {
+        const containers = [...itemPickerScreen.querySelectorAll("[data-container-drop]")]
+        let totalItems = 0
+        containers.forEach((container) => {
+          const rows = [...container.querySelectorAll("[data-item-row]")]
+          totalItems += rows.length
+          const stars = rows.filter((row) => row.querySelector("[data-item-star].starred")).length
+          container.querySelector("[data-container-count]").textContent = `${rows.length} 项 · ${stars} 项星标`
+        })
+        itemPickerScreen.querySelector("[data-packing-summary]").textContent =
+          `${containers.length} 个移动容器 · ${totalItems} 项`
+      }
+
+      function updateSelectionCount() {
+        const selectedItems = [...itemPickerScreen.querySelectorAll("[data-item-row].selected")]
+        const count = selectedItems.length
+        const allStarred = count > 0 && selectedItems.every((item) => item.querySelector("[data-item-star].starred"))
+        itemPickerScreen.querySelector("[data-selection-count]").textContent = `已选 ${count} 项`
+        itemPickerScreen.querySelector("[data-batch-toolbar]").classList.toggle("show", count > 0)
+        const markButton = itemPickerScreen.querySelector('[data-batch-item-action="mark"]')
+        markButton.textContent = allStarred ? "清除标记" : "标记"
+        markButton.dataset.clearMark = String(allStarred)
+      }
+
+      function setStar(button, starred) {
+        button.classList.toggle("starred", starred)
+        button.setAttribute("aria-pressed", String(starred))
+        button.setAttribute("aria-label", starred ? "取消星标" : "添加星标")
+      }
+
+      function closeModals() {
+        itemPickerScreen.querySelectorAll(".modal-layer.open").forEach((modal) => modal.classList.remove("open"))
+      }
+
+      function openDeleteDialog(rows) {
+        pendingDeleteRows = rows
+        if (!rows.length) return
+        itemPickerScreen.querySelector("[data-delete-copy]").textContent =
+          `将 ${rows.length} 项物品从本次行程移出；物品库档案和实际位置不会被删除。`
+        itemPickerScreen.querySelector("[data-delete-dialog]").classList.add("open")
+      }
+
+      function moveRows(rows, targetName) {
+        const target = [...itemPickerScreen.querySelectorAll("[data-container-drop]")].find(
+          (container) => container.dataset.containerName === targetName,
+        )
+        if (!target || !rows.length) return
+        rows.forEach((row) => {
+          target.querySelector("[data-container-items]").appendChild(row)
+          row.classList.remove("selected", "swiped")
+        })
+        updateContainerCounts()
+        updateSelectionCount()
+        showToast(`已移动到${targetName}`)
+      }
+
+      function attachItemBehaviors(row) {
+        const content = row.querySelector("[data-swipe-content]")
+        let startX = 0
+        let startY = 0
+        let tracking = false
+
+        content.addEventListener("pointerdown", (event) => {
+          startX = event.clientX
+          startY = event.clientY
+          tracking = true
+        })
+        content.addEventListener("pointerup", (event) => {
+          if (!tracking) return
+          const deltaX = event.clientX - startX
+          const deltaY = event.clientY - startY
+          if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < -34) {
+            getItemRows().forEach((item) => item.classList.toggle("swiped", item === row))
+          } else if (deltaX > 24) {
+            row.classList.remove("swiped")
+          }
+          tracking = false
+        })
+        content.addEventListener("pointercancel", () => {
+          tracking = false
+        })
+
+        row.addEventListener("dragstart", () => {
+          draggedItem = row
+          row.classList.add("dragging")
+        })
+        row.addEventListener("dragend", () => {
+          row.classList.remove("dragging")
+          itemPickerScreen.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"))
+          draggedItem = null
+        })
+      }
+
+      function attachDropZone(container) {
+        container.addEventListener("dragover", (event) => {
+          if (!draggedItem) return
+          event.preventDefault()
+          container.classList.add("drop-target")
+        })
+        container.addEventListener("dragleave", () => container.classList.remove("drop-target"))
+        container.addEventListener("drop", (event) => {
+          event.preventDefault()
+          container.classList.remove("drop-target")
+          if (!draggedItem || container.contains(draggedItem)) return
+          container.querySelector("[data-container-items]").appendChild(draggedItem)
+          draggedItem.classList.remove("selected", "swiped")
+          updateContainerCounts()
+          updateSelectionCount()
+          showToast(`已移动到${container.dataset.containerName}`)
+        })
+      }
+
+      function addContainer(name, icon = "🧳") {
+        const section = document.createElement("section")
+        section.className = "card packing-container section-gap"
+        section.dataset.containerDrop = ""
+        section.dataset.containerName = name
+        section.innerHTML = `
+          <div class="container-head">
+            <span class="pack-icon">${icon}</span>
+            <span><strong>${name}</strong><small data-container-count>0 项 · 0 项星标</small></span>
+            <span class="drag-hint" aria-label="可拖入物品">•••</span>
+          </div>
+          <div class="container-items" data-container-items></div>
+          <button class="container-add-item" type="button" data-open-library="${name}">＋ 从物品库添加</button>`
+        itemPickerScreen
+          .querySelector(".packing-content")
+          .insertBefore(section, itemPickerScreen.querySelector(".add-container-card"))
+        attachDropZone(section)
+        showToast(`已添加${name}`)
+      }
+
+      function buildItemRow(result) {
+        const title = result.querySelector("strong").textContent
+        const meta = result.querySelector("small").textContent
+        const icon = result.querySelector(".pack-icon").textContent
+        const row = document.createElement("div")
+        row.className = "swipe-row"
+        row.dataset.itemRow = ""
+        row.draggable = true
+        row.innerHTML = `
+          <button class="swipe-delete" type="button" data-delete-one>删除</button>
+          <div class="item-content" data-swipe-content>
+            <button class="focus-check" type="button" data-item-select aria-label="选择 ${title}">✓</button>
+            <span class="pack-icon">${icon}</span>
+            <span><strong>${title}</strong><small>${meta}</small></span>
+            <button class="item-star" type="button" data-item-star aria-pressed="false" aria-label="添加星标">★</button>
+          </div>`
+        attachItemBehaviors(row)
+        return row
+      }
+
+      function setLibraryResultSelected(result, selected) {
+        result.classList.toggle("selected", selected)
+        const button = result.querySelector("[data-library-add]")
+        button.textContent = selected ? "✓" : "＋"
+        button.setAttribute("aria-pressed", String(selected))
+      }
+
+      function updateLibraryFooter() {
+        const selected = [...libraryPickerScreen.querySelectorAll("[data-library-result].selected")]
+        const count = selected.length
+        libraryPickerScreen.querySelector("[data-add-to-container]").textContent =
+          `添加 ${count} 项到${libraryTargetContainer}`
+        libraryPickerScreen.querySelector("[data-library-cart-count]").textContent = `${count} 项`
+        const cart = libraryPickerScreen.querySelector("[data-library-cart]")
+        if (!count) {
+          cart.innerHTML = '<div class="empty-cart">点击物品右侧的“＋”加入<br />已添加的物品会集中显示在这里</div>'
+          return
+        }
+        cart.innerHTML = selected
+          .map((result) => {
+            const title = result.querySelector("strong").textContent
+            const meta = result.querySelector("small").textContent
+            const icon = result.querySelector(".pack-icon").textContent
+            return `<div class="cart-item">
+              <span class="pack-icon">${icon}</span>
+              <span><strong>${title}</strong><small>${meta}</small></span>
+              <button class="cart-remove" type="button" data-cart-remove="${result.dataset.libraryKey}" aria-label="移除${title}">×</button>
+            </div>`
+          })
+          .join("")
+      }
+
+      function showDrillPanel(name, push = true) {
+        libraryPickerScreen.querySelectorAll("[data-drill-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.drillPanel !== name
+        })
+        if (push && drillHistory.at(-1) !== name) drillHistory.push(name)
+        libraryPickerScreen.querySelector("[data-drill-back]").hidden = drillHistory.length === 1
+      }
+
+      prototypeButtons.forEach((button) =>
+        button.addEventListener("click", () => showScreen(button.dataset.screenTarget)),
+      )
+      document
+        .querySelectorAll("[data-go]")
+        .forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.go)))
+
+      document.querySelectorAll("[data-open-item-picker]").forEach((button) => {
+        button.addEventListener("click", () => {
+          itemReturnScreen = button.dataset.openItemPicker
+          showScreen("item-picker")
+        })
+      })
+
+      document.querySelectorAll("[data-item-back]").forEach((button) => {
+        button.addEventListener("click", () => showScreen(itemReturnScreen))
+      })
+
+      document.querySelectorAll("[data-item-save]").forEach((button) => {
+        button.addEventListener("click", () => {
+          showScreen(itemReturnScreen)
+          showToast("物品清单已更新")
+        })
+      })
+
+      itemPickerScreen.addEventListener("click", (event) => {
+        const selectButton = event.target.closest("[data-item-select]")
+        const starButton = event.target.closest("[data-item-star]")
+        const deleteButton = event.target.closest("[data-delete-one]")
+        const batchButton = event.target.closest("[data-batch-item-action]")
+        const libraryButton = event.target.closest("[data-open-library]")
+
+        if (selectButton) {
+          selectButton.closest("[data-item-row]").classList.toggle("selected")
+          updateSelectionCount()
+          return
+        }
+        if (starButton) {
+          setStar(starButton, !starButton.classList.contains("starred"))
+          updateContainerCounts()
+          updateSelectionCount()
+          return
+        }
+        if (deleteButton) {
+          openDeleteDialog([deleteButton.closest("[data-item-row]")])
+          return
+        }
+        if (batchButton) {
+          const selectedItems = [...itemPickerScreen.querySelectorAll("[data-item-row].selected")]
+          if (batchButton.dataset.batchItemAction === "mark") {
+            const shouldStar = batchButton.dataset.clearMark !== "true"
+            selectedItems.forEach((item) => setStar(item.querySelector("[data-item-star]"), shouldStar))
+            updateContainerCounts()
+            updateSelectionCount()
+            showToast(shouldStar ? "已将所选物品设为星标" : "已清除所选物品的星标")
+          } else if (batchButton.dataset.batchItemAction === "move") {
+            itemPickerScreen.querySelector("[data-move-sheet]").classList.add("open")
+          } else {
+            openDeleteDialog(selectedItems)
+          }
+          return
+        }
+        if (libraryButton) {
+          libraryTargetContainer = libraryButton.dataset.openLibrary
+          libraryPickerScreen.querySelector("[data-library-target]").textContent = libraryTargetContainer
+          libraryPickerScreen
+            .querySelectorAll("[data-library-result]")
+            .forEach((item) => setLibraryResultSelected(item, false))
+          updateLibraryFooter()
+          showScreen("library-picker")
+          return
+        }
+        if (event.target.closest("[data-select-all]")) {
+          getItemRows().forEach((item) => item.classList.add("selected"))
+          updateSelectionCount()
+          return
+        }
+        if (event.target.closest("[data-clear-selection]")) {
+          getItemRows().forEach((item) => item.classList.remove("selected"))
+          updateSelectionCount()
+          return
+        }
+        if (event.target.closest("[data-open-container-sheet]")) {
+          itemPickerScreen.querySelector("[data-container-sheet]").classList.add("open")
+          return
+        }
+        if (event.target.closest("[data-close-modal]")) {
+          closeModals()
+          return
+        }
+        const existingContainer = event.target.closest("[data-add-existing-container]")
+        if (existingContainer) {
+          const name = existingContainer.dataset.addExistingContainer
+          const exists = [...itemPickerScreen.querySelectorAll("[data-container-drop]")].some(
+            (container) => container.dataset.containerName === name,
+          )
+          closeModals()
+          exists ? showToast(`${name}已在清单中`) : addContainer(name)
+          return
+        }
+        if (event.target.closest("[data-create-container]")) {
+          closeModals()
+          itemPickerScreen.querySelector("[data-new-container-sheet]").classList.add("open")
+          return
+        }
+        if (event.target.closest("[data-confirm-new-container]")) {
+          const name = itemPickerScreen.querySelector("[data-new-container-name]").value.trim()
+          if (!name) {
+            showToast("请填写容器名称")
+            return
+          }
+          closeModals()
+          addContainer(name, "🎒")
+          return
+        }
+        const moveTarget = event.target.closest("[data-move-target]")
+        if (moveTarget) {
+          const rows = [...itemPickerScreen.querySelectorAll("[data-item-row].selected")]
+          closeModals()
+          moveRows(rows, moveTarget.dataset.moveTarget)
+          return
+        }
+        if (event.target.closest("[data-confirm-delete]")) {
+          pendingDeleteRows.forEach((row) => row.remove())
+          const deletedCount = pendingDeleteRows.length
+          pendingDeleteRows = []
+          closeModals()
+          updateContainerCounts()
+          updateSelectionCount()
+          showToast(`已从本次行程移出 ${deletedCount} 项`)
+        }
+      })
+
+      libraryPickerScreen.addEventListener("click", (event) => {
+        const addButton = event.target.closest("[data-library-add]")
+        const cartRemove = event.target.closest("[data-cart-remove]")
+        const tab = event.target.closest("[data-library-tab]")
+        const drill = event.target.closest("[data-drill-to]")
+        if (addButton) {
+          const result = addButton.closest("[data-library-result]")
+          if (result.classList.contains("selected")) {
+            showToast("已在本次添加中")
+            return
+          }
+          setLibraryResultSelected(result, true)
+          updateLibraryFooter()
+          return
+        }
+        if (cartRemove) {
+          const result = [...libraryPickerScreen.querySelectorAll("[data-library-result]")].find(
+            (item) => item.dataset.libraryKey === cartRemove.dataset.cartRemove,
+          )
+          if (result) setLibraryResultSelected(result, false)
+          updateLibraryFooter()
+          return
+        }
+        if (tab) {
+          libraryPickerScreen.querySelectorAll("[data-library-tab]").forEach((button) => {
+            button.classList.toggle("active", button === tab)
+          })
+          libraryPickerScreen.querySelectorAll("[data-library-panel]").forEach((panel) => {
+            panel.hidden = panel.dataset.libraryPanel !== tab.dataset.libraryTab
+          })
+          return
+        }
+        if (drill) {
+          showDrillPanel(drill.dataset.drillTo)
+          return
+        }
+        if (event.target.closest("[data-drill-back]")) {
+          drillHistory.pop()
+          showDrillPanel(drillHistory.at(-1), false)
+          return
+        }
+        if (event.target.closest("[data-clear-library]")) {
+          libraryPickerScreen
+            .querySelectorAll("[data-library-result]")
+            .forEach((item) => setLibraryResultSelected(item, false))
+          updateLibraryFooter()
+          return
+        }
+        if (event.target.closest("[data-library-back]")) {
+          showScreen("item-picker")
+          return
+        }
+        if (event.target.closest("[data-add-to-container]")) {
+          const selected = [...libraryPickerScreen.querySelectorAll("[data-library-result].selected")]
+          if (!selected.length) {
+            showToast("请先选择物品")
+            return
+          }
+          const target = [...itemPickerScreen.querySelectorAll("[data-container-drop]")].find(
+            (container) => container.dataset.containerName === libraryTargetContainer,
+          )
+          selected.forEach((result) => target.querySelector("[data-container-items]").appendChild(buildItemRow(result)))
+          updateContainerCounts()
+          showScreen("item-picker")
+          showToast(`已添加 ${selected.length} 项到${libraryTargetContainer}`)
+        }
+      })
+
+      libraryPickerScreen.querySelector("[data-library-search-input]").addEventListener("input", (event) => {
+        const query = event.target.value.trim().toLowerCase()
+        libraryPickerScreen.querySelectorAll('[data-library-panel="search"] [data-library-result]').forEach((item) => {
+          item.hidden = Boolean(query) && !item.dataset.libraryResult.toLowerCase().includes(query)
+        })
+      })
+
+      getItemRows().forEach(attachItemBehaviors)
+      itemPickerScreen.querySelectorAll("[data-container-drop]").forEach(attachDropZone)
+      updateContainerCounts()
+      updateSelectionCount()
+      updateLibraryFooter()
+
+      document.querySelectorAll("[data-calendar-toggle]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const panel = document.querySelector("[data-calendar-panel]")
+          const isOpen = panel.classList.toggle("open")
+          button.setAttribute("aria-expanded", String(isOpen))
+        })
+      })
+
+      document.querySelectorAll("[data-week-date]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-week-date]").forEach((date) => date.classList.remove("active"))
+          button.classList.add("active")
+          document.querySelector("[data-selected-date-label]").textContent = button.dataset.weekDate
+        })
+      })
+
+      document.querySelectorAll("[data-trip-search-input]").forEach((input) => {
+        input.addEventListener("input", () => {
+          const query = input.value.trim().toLowerCase()
+          document.querySelectorAll("[data-trip-search]").forEach((trip) => {
+            trip.hidden = Boolean(query) && !trip.dataset.tripSearch.toLowerCase().includes(query)
+          })
+        })
+      })
+
+      document.querySelectorAll("[data-day-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const selectedDay = button.dataset.dayTab
+          document.querySelectorAll("[data-day-tab]").forEach((tab) => {
+            const selected = tab === button
+            tab.classList.toggle("active", selected)
+            tab.setAttribute("aria-selected", String(selected))
+          })
+          document.querySelectorAll("[data-day-panel]").forEach((panel) => {
+            panel.hidden = panel.dataset.dayPanel !== selectedDay
+          })
+        })
+      })
+
+      document.querySelectorAll("[data-show-readiness]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelector("[data-readiness-result]").classList.add("show")
+          document.querySelector("[data-check-entry]").textContent = "再次出发核对"
+        })
+      })
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast))
+      })
+    </script>
+  </body>
+</html>

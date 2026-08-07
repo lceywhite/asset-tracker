@@ -13,6 +13,7 @@ export const BUSINESS_STORAGE_KEYS = [
   "asset-guard-custom-types",
   "asset-tracker-item-view",
   "asset-tracker-item-preferences",
+  "asset-tracker-trip-preferences",
 ]
 
 function isRecord(value) {
@@ -89,6 +90,7 @@ export async function restoreBackup(payload, { mode = "replace" } = {}) {
       }
     })
     await db.ensureV3Defaults()
+    await db.ensureTripV2Data()
 
     if (mode === "replace") BUSINESS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key))
     Object.entries(payload.data.localStorage).forEach(([key, value]) => {

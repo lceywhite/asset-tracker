@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from "vue"
-import { useRouter } from "vue-router"
+import { computed, nextTick, onMounted, ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import { Capacitor } from "@capacitor/core"
 import { useUserStore } from "@/stores/useUserStore"
 import * as db from "@/services/db"
@@ -13,7 +13,9 @@ import {
 } from "@/services/backupService"
 import { exportToJSON, importJSON } from "@/utils/export"
 import { getPreferences, updatePreferences } from "@/services/itemPreferencesService"
+import { getTripPreferences, updateTripPreferences } from "@/services/tripPreferencesService"
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const editOpen = ref(false)
@@ -22,6 +24,7 @@ const message = ref("")
 const counts = ref({ items: 0, spaces: 0, containers: 0, activities: 0 })
 const storageLabel = ref("正在计算")
 const preferences = ref(getPreferences())
+const tripPreferences = ref(getTripPreferences())
 const importPreview = ref(null)
 const importPayload = ref(null)
 const fileInput = ref(null)
@@ -54,7 +57,13 @@ async function refreshStats() {
   } else storageLabel.value = "仅存于本机"
 }
 
-onMounted(refreshStats)
+onMounted(async () => {
+  await refreshStats()
+  if (route.query.section === "preferences") {
+    await nextTick()
+    document.querySelector("#preferences")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+})
 
 function openEditor() {
   editName.value = userStore.user.name
@@ -69,6 +78,10 @@ function saveProfile() {
 function setPreference(key, value) {
   preferences.value = updatePreferences({ [key]: value })
   flash("偏好设置已更新")
+}
+function setTripPreference(key, value) {
+  tripPreferences.value = updateTripPreferences({ [key]: value })
+  flash("行程提醒偏好已更新")
 }
 async function exportBackup() {
   const backup = await createBackup()
@@ -98,6 +111,7 @@ async function applyRestore(mode) {
   importPreview.value = null
   await refreshStats()
   preferences.value = getPreferences()
+  tripPreferences.value = getTripPreferences()
   flash(mode === "replace" ? "数据已从备份替换" : "备份数据已合并")
 }
 async function clearData() {
@@ -106,6 +120,7 @@ async function clearData() {
   await clearBusinessData()
   await refreshStats()
   preferences.value = getPreferences()
+  tripPreferences.value = getTripPreferences()
   flash("本机业务数据已清空")
 }
 </script>
@@ -149,7 +164,7 @@ async function clearData() {
       </div>
     </section>
 
-    <section class="mb-4">
+    <section id="preferences" class="mb-4 scroll-mt-4">
       <h2 class="text-xs font-semibold text-gray-400 px-1 mb-2">偏好设置</h2>
       <div class="bg-white rounded-2xl border divide-y overflow-hidden" style="border-color: var(--color-border-light)">
         <div class="p-4 flex items-center justify-between gap-4">
@@ -211,6 +226,44 @@ async function clearData() {
               <option value="linear">使用年限直线折旧</option>
             </select>
           </div>
+        </div>
+        <div class="p-4">
+          <div class="text-sm font-semibold">星标物品提醒</div>
+          <div class="text-xs text-gray-400 mt-1 mb-3">统一用于所有行程；当前保存规则，系统通知稍后接入</div>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="text-[11px] text-gray-500">
+              出发前
+              <select
+                class="w-full rounded-lg border bg-white px-2 py-2 text-xs mt-1"
+                :value="tripPreferences.departureReminder"
+                @change="setTripPreference('departureReminder', $event.target.value)"
+              >
+                <option value="previous_evening">前一天晚上</option>
+                <option value="off">不提醒</option>
+              </select>
+            </label>
+            <label class="text-[11px] text-gray-500">
+              返程/结束前
+              <select
+                class="w-full rounded-lg border bg-white px-2 py-2 text-xs mt-1"
+                :value="tripPreferences.endReminder"
+                @change="setTripPreference('endReminder', $event.target.value)"
+              >
+                <option value="previous_evening">前一天晚上</option>
+                <option value="off">不提醒</option>
+              </select>
+            </label>
+          </div>
+          <label class="block text-[11px] text-gray-500 mt-3">
+            晚上提醒时间
+            <input
+              type="time"
+              class="w-full rounded-lg border bg-white px-3 py-2 text-xs mt-1"
+              :disabled="tripPreferences.departureReminder === 'off' && tripPreferences.endReminder === 'off'"
+              :value="tripPreferences.reminderTime"
+              @change="setTripPreference('reminderTime', $event.target.value)"
+            />
+          </label>
         </div>
       </div>
     </section>

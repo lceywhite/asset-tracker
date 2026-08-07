@@ -4,6 +4,8 @@
 用途：保留需求来源、被否决方向和定稿原因，供后续产品、设计、研发和测试追溯。  
 说明：本文件是按对话顺序整理的决策级参考，不替代原始任务对话；遇到歧义时，以原始对话和最后一次明确确认优先。
 
+后续工程阶段原文已单独续录至 [物品模块 v3 工程阶段对话续录](item-module-v3-engineering-conversation-continuation.md)，覆盖 Git 建仓、代码接入、界面反馈、Mac 交接和转入行程模块的过程。
+
 ## A. 产品与交付边界
 
 1. 产品由 Codex 主导继续开发，但需要先梳理现有框架、工程和前期规划。
@@ -87,6 +89,7 @@
 - 物品主页原型 v3：`../prototypes/item-home-v3.html`
 - 设计总说明：`../item-module-v3-design-spec.md`
 - 产品迭代日志：`../item-module-v3-iteration-log.md`
+- 工程阶段对话续录：`item-module-v3-engineering-conversation-continuation.md`
 
 > 注意：下方原始对话中的文件路径按当时回复原样保留。文档归档后，这些历史路径可能已失效；当前有效路径以本节和 `docs/README.md` 为准。
 

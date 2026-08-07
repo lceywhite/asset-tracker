@@ -1,6 +1,6 @@
 # Windows 迁移到 Mac 与 Xcode 指引
 
-更新日期：2026-07-16
+更新日期：2026-08-07
 
 推荐通过当前 GitHub 私有仓库迁移，不需要压缩整个 Windows 工程发送到 Mac。Git 会下载源代码、工程配置、文档和版本历史；依赖需要在 Mac 重新安装，Xcode 签名需要在 Mac 单独配置。
 
@@ -20,7 +20,9 @@ git log --oneline --decorate -5
 - 地址：`https://github.com/lceywhite/asset-tracker`
 - 权限：私有；
 - 默认分支：`main`；
-- 已归档基线：`baseline-2026-07-16`。
+- 已归档早期基线：`baseline-2026-07-16`；
+- 当前行程里程碑标签：`trip-v3-integration-baseline`。
+- 当前行程 v3 里程碑：`fbb573b`；在功能分支尚未合并到 `main` 时，需要切换到 `codex/trip-module-v3`。
 
 ## Mac 准备
 
@@ -78,6 +80,16 @@ git log --oneline --decorate -5
 ```
 
 此时应看到 `main` 跟踪 `origin/main`，最新提交与 GitHub 一致。
+
+如果行程 v3 尚未合并到 `main`，在仓库完成远端推送后执行：
+
+```bash
+git fetch origin
+git switch --track origin/codex/trip-module-v3
+git log -1 --oneline
+```
+
+最后一条应显示 `fbb573b feat: establish trip module v3 baseline` 或其后的收口文档提交。分支合并到 `main` 后，新电脑优先回到 `main` 开发。
 
 安装 Mac 版本依赖并验证：
 

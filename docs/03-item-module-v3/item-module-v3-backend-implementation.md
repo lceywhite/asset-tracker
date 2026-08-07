@@ -123,4 +123,4 @@
 1. 在 Mac 执行 `npm run ios:sync`；
 2. 用 Xcode 验证 SPM、编译和签名；
 3. 在 iPhone 真机检查安全区、相机多图、长表单键盘、拖动布局和冷启动；
-4. 真机验收通过后再形成物品模块 v3 的 Git 阶段提交。
+4. 物品模块 v3 已形成 Git 阶段提交 `9bc6ad5 feat: implement item module v3` 并推送到远端分支 `agent/item-module-v3`；真机验收通过后再决定发布标签和 App 版本。

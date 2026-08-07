@@ -1,8 +1,9 @@
 import { openDB, unwrap } from "idb"
 import { normalizeItem } from "../domain/itemModel.js"
+import { normalizeCheckSession, normalizeTrip } from "../domain/tripModel.js"
 
 export const DB_NAME = "asset-tracker-db"
-export const DB_VERSION = 6
+export const DB_VERSION = 8
 export const STORE_NAMES = [
   "items",
   "checklists",
@@ -205,6 +206,34 @@ function migrateLegacyLocationRecords(transaction) {
   }
 }
 
+function migrateLegacyTripData(transaction, now) {
+  const activityStore = transaction.objectStore("activities")
+  const activityRequest = unwrap(activityStore).openCursor()
+  activityRequest.onsuccess = () => {
+    const cursor = activityRequest.result
+    if (!cursor) return
+    try {
+      cursor.update(normalizeTrip(cursor.value, { id: cursor.value.id, now }))
+    } catch (error) {
+      console.warn("旧行程迁移失败，保留原始记录：", cursor.value?.id, error)
+    }
+    cursor.continue()
+  }
+
+  const sessionStore = transaction.objectStore("checkSessions")
+  const sessionRequest = unwrap(sessionStore).openCursor()
+  sessionRequest.onsuccess = () => {
+    const cursor = sessionRequest.result
+    if (!cursor) return
+    try {
+      cursor.update(normalizeCheckSession(cursor.value, { id: cursor.value.id, planId: cursor.value.planId, now }))
+    } catch (error) {
+      console.warn("旧核对记录迁移失败，保留原始记录：", cursor.value?.id, error)
+    }
+    cursor.continue()
+  }
+}
+
 function upgrade(db, oldVersion, _newVersion, transaction) {
   const items = createStore(db, transaction, "items")
   ensureIndex(items, "name", "name")
@@ -237,6 +266,11 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
 
   const activities = createStore(db, transaction, "activities")
   ensureIndex(activities, "startDate", "startDate")
+  ensureIndex(activities, "departureAt", "departureAt")
+  ensureIndex(activities, "returnAt", "returnAt")
+  ensureIndex(activities, "startsAt", "startsAt")
+  ensureIndex(activities, "endsAt", "endsAt")
+  ensureIndex(activities, "type", "type")
   ensureIndex(activities, "status", "status")
 
   const activityItems = createStore(db, transaction, "activityItems")
@@ -244,7 +278,9 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
 
   const checkSessions = createStore(db, transaction, "checkSessions")
   ensureIndex(checkSessions, "planId", "planId")
+  ensureIndex(checkSessions, "kind", "kind")
   ensureIndex(checkSessions, "startedAt", "startedAt")
+  ensureIndex(checkSessions, "updatedAt", "updatedAt")
   ensureIndex(checkSessions, "status", "status")
 
   const homeSections = createStore(db, transaction, "homeSections")
@@ -261,21 +297,6 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
   ensureIndex(spaceLayouts, "nodeId", "nodeId")
   ensureIndex(spaceLayouts, "sortOrder", "sortOrder")
 
-  if (oldVersion < 5 && oldVersion > 0) {
-    const request = unwrap(activities).openCursor()
-    request.onsuccess = () => {
-      const cursor = request.result
-      if (!cursor) return
-      const activity = cursor.value
-      const packingItems = (activity.packingItems || []).map((entry) => {
-        const { checked: _legacyChecked, ...rest } = entry
-        return { ...rest, id: entry.id || crypto.randomUUID() }
-      })
-      cursor.update({ ...activity, kind: "plan", modelVersion: 1, packingItems })
-      cursor.continue()
-    }
-  }
-
   // Seed legacy stores before the v3 migration queues its cursors, so a new database
   // receives the same generic space nodes as an upgraded database.
   if (oldVersion === 0) seedNewDatabase(transaction)
@@ -287,6 +308,8 @@ function upgrade(db, oldVersion, _newVersion, transaction) {
     migrateLegacyItemData(transaction, now)
     migrateLegacyLocationRecords(transaction)
   }
+
+  if (oldVersion < 8) migrateLegacyTripData(transaction, new Date().toISOString())
 }
 
 export function getDb() {
@@ -395,6 +418,40 @@ export async function ensureV3Defaults() {
       }
     },
   )
+}
+
+export async function ensureTripV2Data() {
+  const now = new Date().toISOString()
+  return runTransaction(["activities", "checkSessions"], "readwrite", async (transaction) => {
+    const activityStore = transaction.objectStore("activities")
+    for (const activity of await activityStore.getAll()) {
+      const entriesCurrent = (activity.packingItems || []).every(
+        (entry) => entry.id && entry.containerId && Object.hasOwn(entry, "starred"),
+      )
+      const routeCurrent =
+        activity.modelVersion === 3 &&
+        activity.startsAt !== undefined &&
+        activity.endsAt !== undefined &&
+        activity.legs?.length
+      if (routeCurrent && entriesCurrent) continue
+      try {
+        await activityStore.put(normalizeTrip(activity, { id: activity.id, now }))
+      } catch (error) {
+        console.warn("行程运行时迁移失败，保留原始记录：", activity.id, error)
+      }
+    }
+
+    const sessionStore = transaction.objectStore("checkSessions")
+    for (const session of await sessionStore.getAll()) {
+      const resultsCurrent = Object.values(session.results || {}).every((result) => result?.state)
+      if (session.modelVersion === 2 && resultsCurrent) continue
+      try {
+        await sessionStore.put(normalizeCheckSession(session, { id: session.id, planId: session.planId, now }))
+      } catch (error) {
+        console.warn("核对记录运行时迁移失败，保留原始记录：", session.id, error)
+      }
+    }
+  })
 }
 
 export async function clearAll() {

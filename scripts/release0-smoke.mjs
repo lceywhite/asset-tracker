@@ -91,9 +91,11 @@ try {
     database.close()
     return result
   })
-  assert.equal(schema.version, 6)
+  assert.equal(schema.version, 8)
   assert.ok(schema.sessionIndexes.includes("planId"))
+  assert.ok(schema.sessionIndexes.includes("kind"))
   assert.equal(schema.migrated.kind, "plan")
+  assert.equal(schema.migrated.modelVersion, 3)
   assert.equal("checked" in schema.migrated.packingItems[0], false)
   const v3Model = await page.evaluate(async () => {
     const request = indexedDB.open("asset-tracker-db")
@@ -177,14 +179,40 @@ try {
 
   await page.getByRole("button", { name: "快捷添加" }).click()
   await page.getByRole("button", { name: /新建行程/ }).click()
-  await page.getByPlaceholder("标题 *").fill("MVP 测试行程")
-  await page.getByText(/选择物品/).click()
-  await page.getByRole("button", { name: "全选", exact: true }).click()
-  await page.getByRole("button", { name: /加入清单（1）/ }).click()
-  await page.getByRole("button", { name: "创建", exact: true }).click()
-  await page.waitForURL("**/#/plans/**")
-  await page.getByRole("button", { name: /出发核对/ }).click()
+  await page.getByRole("textbox", { name: "行程名称", exact: true }).fill("MVP 测试行程")
+  const tripStartInput = page.getByRole("textbox", { name: "开始时间", exact: true })
+  const tripStartValue = await tripStartInput.inputValue()
+  const tripEndDate = new Date(`${tripStartValue.slice(0, 10)}T00:00:00Z`)
+  tripEndDate.setUTCDate(tripEndDate.getUTCDate() + 1)
+  await page
+    .getByRole("textbox", { name: "结束时间", exact: true })
+    .fill(`${tripEndDate.toISOString().slice(0, 10)}T${tripStartValue.slice(11, 16)}`)
+  await page.getByRole("textbox", { name: "起点", exact: true }).fill("测试房间")
+  await page.getByRole("textbox", { name: "终点", exact: true }).fill("测试终点")
+  await page.getByRole("button", { name: "＋ 添加信息卡片", exact: true }).click()
+  await page.getByRole("textbox", { name: "信息内容", exact: true }).fill("09:00 | 到达 | 开始核对")
+  await page.getByRole("button", { name: "保存卡片", exact: true }).click()
+  await page.getByRole("button", { name: "＋ 添加物品", exact: true }).click()
+  await page.getByRole("heading", { name: "携带物品清单", exact: true }).waitFor()
+  await page.getByRole("button", { name: /添加移动容器/ }).click()
+  await page.getByRole("button", { name: /测试背包/ }).click()
+  await page.getByRole("button", { name: "加入容器及全部物品", exact: true }).click()
+  await page.getByRole("button", { name: /添加移动容器/ }).click()
+  await page.getByRole("button", { name: /新建移动容器/ }).click()
+  await page.getByRole("textbox", { name: "容器名称", exact: true }).fill("烟雾测试临时容器")
+  await page.getByRole("button", { name: "创建并加入", exact: true }).click()
+  page.once("dialog", (dialog) => dialog.accept())
+  await page.getByRole("button", { name: "从行程移除烟雾测试临时容器", exact: true }).click()
+  await page.getByRole("button", { name: "从行程移除烟雾测试临时容器", exact: true }).waitFor({ state: "hidden" })
+  await page.getByRole("button", { name: "给MVP 测试护照加星标", exact: true }).click()
+  await page.getByRole("button", { name: "完成", exact: true }).click()
+  await page.waitForURL("**/#/plans/*/edit")
+  await page.getByRole("button", { name: "保存行程档案", exact: true }).click()
+  await page.waitForURL(/#\/plans\/[^/]+$/)
+  await page.getByText("行程安排", { exact: true }).waitFor()
+  await page.getByRole("button", { name: "出发核对", exact: true }).click()
   await page.getByRole("button", { name: "已确认" }).click()
+  await page.getByRole("button", { name: "返回行程档案", exact: true }).click()
   await page.reload({ waitUntil: "networkidle" })
   await page.getByText("MVP 测试行程", { exact: true }).first().waitFor()
 
@@ -202,8 +230,33 @@ try {
     return { plan: plans.find((entry) => entry.title === "MVP 测试行程"), sessions }
   })
   assert.equal(persisted.plan.packingItems.length, 1)
+  assert.equal(persisted.plan.modelVersion, 3)
+  assert.ok(persisted.plan.endsAt > persisted.plan.startsAt)
+  assert.equal(persisted.plan.legs.length, 1)
+  assert.equal(persisted.plan.infoCards.length, 1)
+  assert.equal(persisted.plan.infoCards[0].type, "timeline")
+  assert.equal(persisted.plan.containerRefs.length, 1)
+  assert.equal(persisted.plan.containerRefs[0].importedAll, true)
+  assert.equal(persisted.plan.containerRefs[0].importedItemIds.length, 1)
+  assert.equal(persisted.plan.packingItems[0].containerId, "bag-fixture")
+  assert.equal(persisted.plan.packingItems[0].starred, true)
   assert.equal("checked" in persisted.plan.packingItems[0], false)
   assert.equal(persisted.sessions.filter((session) => session.planId === persisted.plan.id).length, 1)
+  assert.equal(
+    persisted.sessions.find((session) => session.planId === persisted.plan.id).results[
+      persisted.plan.packingItems[0].id
+    ].state,
+    "confirmed",
+  )
+
+  await page.getByRole("button", { name: "返回", exact: true }).click()
+  await page.waitForURL("**/#/plans")
+  await page.getByText("MVP 测试行程", { exact: true }).first().waitFor()
+  await page.locator(".week-strip .trip-dot").first().waitFor()
+  assert.ok((await page.locator(".week-strip .trip-dot").count()) > 0)
+  await page.getByRole("button", { name: /本周/ }).click()
+  await page.locator(".calendar-grid > .calendar-range").first().waitFor()
+  assert.ok((await page.locator(".calendar-grid > .calendar-range").count()) > 0)
 
   await page.getByText("社区", { exact: true }).click()
   await page.getByText("社区入口已预留", { exact: true }).waitFor()
@@ -229,7 +282,7 @@ try {
     runtimeErrors.filter((message) => !message.includes("net::ERR_FAILED")),
     [],
   )
-  console.log("Single-user MVP smoke passed: DB v4→v6, item v3, plan check session, four tabs, backup v3")
+  console.log("Single-user MVP smoke passed: DB v4→v8, item v3, trip v3/model v3, four tabs, backup v3")
 } finally {
   await browser.close()
 }
