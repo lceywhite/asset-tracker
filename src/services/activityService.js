@@ -65,17 +65,17 @@ async function enrichTripData(data) {
 }
 
 export async function getAll() {
-  await db.ensureTripV2Data()
+  await db.ensureTripData()
   return db.getAll(STORE)
 }
 
 export async function get(id) {
-  await db.ensureTripV2Data()
+  await db.ensureTripData()
   return db.get(STORE, id)
 }
 
 export async function getByDateRange(lower, upper) {
-  await db.ensureTripV2Data()
+  await db.ensureTripData()
   return db.getAllByIndexRange(STORE, "startsAt", lower, `${upper}\uffff`)
 }
 

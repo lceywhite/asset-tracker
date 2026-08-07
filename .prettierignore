@@ -5,7 +5,5 @@ ios/App/App/public/
 ios/App/App/capacitor.config.json
 coverage/
 package-lock.json
-preview.html
-fix_*.cjs
 docs/03-item-module-v3/prototypes/*.html
 docs/**/references/*conversation*.md

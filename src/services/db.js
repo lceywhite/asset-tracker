@@ -420,7 +420,7 @@ export async function ensureV3Defaults() {
   )
 }
 
-export async function ensureTripV2Data() {
+export async function ensureTripData() {
   const now = new Date().toISOString()
   return runTransaction(["activities", "checkSessions"], "readwrite", async (transaction) => {
     const activityStore = transaction.objectStore("activities")

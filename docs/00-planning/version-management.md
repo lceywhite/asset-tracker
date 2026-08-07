@@ -42,6 +42,8 @@ Git 分支、提交和标签是代码快照，不替代以上任何版本号。
 
 行程模块的产品代次现为 v3。正式行程记录仍使用 `Plan.modelVersion: 3` 保存 `startsAt`、`endsAt`、去程/返程 `legs`、途经点和信息卡片；核对记录继续使用 `CheckSession.modelVersion: 2`。IndexedDB 保持 v8，备份保持 v3。本次产品基线确认没有新增数据字段、表或迁移事务。
 
+App 对外版本统一称为 `1.0.0-beta.1`。Xcode 的 `MARKETING_VERSION` 使用 Apple 要求的纯数字 `1.0.0`，`CURRENT_PROJECT_VERSION` 为构建号 `1`，因此 iOS 安装包显示为 `1.0.0 (1)`；这与产品内的 Beta 1 名称是明确映射，不是两个不同发布版本。代码通过 `test/appVersion.test.js` 自动检查 package、应用内展示和 Xcode 工程不会漂移。
+
 ## 4. 命名规则
 
 以后在标题和文档中使用完整名称：

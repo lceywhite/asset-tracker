@@ -5,7 +5,7 @@ import * as db from "./db.js"
 const STORE = "checkSessions"
 
 export async function getByPlan(planId) {
-  await db.ensureTripV2Data()
+  await db.ensureTripData()
   return db.getAllByIndex(STORE, "planId", planId)
 }
 

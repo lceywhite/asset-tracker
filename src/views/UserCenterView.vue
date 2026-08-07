@@ -14,6 +14,7 @@ import {
 import { exportToJSON, importJSON } from "@/utils/export"
 import { getPreferences, updatePreferences } from "@/services/itemPreferencesService"
 import { getTripPreferences, updateTripPreferences } from "@/services/tripPreferencesService"
+import { APP_VERSION, IOS_VERSION_LABEL } from "@/config/appVersion"
 
 const route = useRoute()
 const router = useRouter()
@@ -308,7 +309,11 @@ async function clearData() {
         </div>
         <div class="settings-row">
           <span><b>当前版本</b><small>单人 MVP 测试版</small></span
-          ><em>1.0.0-beta.1</em>
+          ><em>{{ APP_VERSION }}</em>
+        </div>
+        <div class="settings-row">
+          <span><b>iOS 构建版本</b><small>Xcode 使用 Apple 要求的纯数字版本号</small></span
+          ><em>{{ IOS_VERSION_LABEL }}</em>
         </div>
       </div>
     </section>

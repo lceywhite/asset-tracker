@@ -1,4 +1,5 @@
 import * as db from "./db.js"
+import { APP_VERSION } from "../config/appVersion.js"
 
 export const BACKUP_FORMAT = "asset-tracker-backup"
 export const BACKUP_VERSION = 3
@@ -68,7 +69,7 @@ export async function createBackup() {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     createdAt,
-    appVersion: "1.0.0-beta.1",
+    appVersion: APP_VERSION,
     database: { name: db.DB_NAME, version: db.DB_VERSION },
     manifest: { stores: [...db.STORE_NAMES], counts, localStorageKeys: Object.keys(localData) },
     data: { stores, localStorage: localData },
@@ -90,7 +91,7 @@ export async function restoreBackup(payload, { mode = "replace" } = {}) {
       }
     })
     await db.ensureV3Defaults()
-    await db.ensureTripV2Data()
+    await db.ensureTripData()
 
     if (mode === "replace") BUSINESS_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key))
     Object.entries(payload.data.localStorage).forEach(([key, value]) => {
